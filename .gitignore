@@ -3,3 +3,4 @@
 recordings/
 logs/
 *.wav
+__pycache__/
