@@ -1,12 +1,22 @@
-from windows_toasts import Toast
+# Version: v1.0
 
-def notify(text):
+from windows_toasts import (
+    WindowsToaster,
+    Toast
+)
+
+toaster = WindowsToaster("Assistant")
+
+
+def notify(message):
 
     toast = Toast()
 
+    toast.duration = "short"
+
     toast.text_fields = [
         "Assistant",
-        text
+        message
     ]
 
-    toast.show()
+    toaster.show_toast(toast)

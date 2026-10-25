@@ -1,8 +1,13 @@
+# Version: v1.0
+
 from PySide6.QtWidgets import (
     QSystemTrayIcon,
-    QMenu
+    QMenu,
+    QApplication
 )
+
 from PySide6.QtGui import QAction
+
 
 class AssistantTray:
 
@@ -11,6 +16,7 @@ class AssistantTray:
         icon,
         listen_callback
     ):
+
         self.tray = QSystemTrayIcon(icon)
 
         menu = QMenu()
@@ -18,7 +24,7 @@ class AssistantTray:
         exit_action = QAction("Exit")
 
         exit_action.triggered.connect(
-            lambda: quit()
+            QApplication.instance().quit
         )
 
         menu.addAction(exit_action)
@@ -37,4 +43,5 @@ class AssistantTray:
             self.listen_callback()
 
     def show(self):
+
         self.tray.show()

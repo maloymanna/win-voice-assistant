@@ -1,24 +1,25 @@
+# Version: v1.0
+
 import subprocess
-import json
+
 
 def transcribe(
     whisper_exe,
     model,
     wav_file
 ):
+
     result = subprocess.run(
         [
             whisper_exe,
             "-m",
             model,
             "-f",
-            wav_file,
-            "-oj"
+            wav_file
         ],
         capture_output=True,
-        text=True
+        text=True,
+        encoding="utf-8"
     )
 
-    data = json.loads(result.stdout)
-
-    return data["transcription"].strip().lower()
+    return result.stdout.strip().lower()

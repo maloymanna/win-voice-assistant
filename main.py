@@ -1,11 +1,9 @@
+# Version: v1.0
+
 import json
 
-from PySide6.QtWidgets import (
-    QApplication
-)
-from PySide6.QtGui import (
-    QIcon
-)
+from PySide6.QtWidgets import QApplication
+from PySide6.QtGui import QIcon
 
 from ui.tray import AssistantTray
 
@@ -19,7 +17,8 @@ from core.notifier import notify
 
 with open(
     "config/config.json",
-    "r"
+    "r",
+    encoding="utf-8"
 ) as f:
     CONFIG = json.load(f)
 
@@ -50,7 +49,6 @@ def listen():
         CONFIG["piper_model"],
         response
     )
-
 
 
 app = QApplication([])
