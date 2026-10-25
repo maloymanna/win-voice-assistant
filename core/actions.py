@@ -1,9 +1,55 @@
-# Version: v1.0.5
+# Version: v1.0.6
 
 import subprocess
 import datetime
+import tempfile
 
-from core.tts import speak
+import sounddevice as sd
+import soundfile as sf
+
+
+def _speak_dynamic_time(time_text):
+
+    with open(
+        "config/config.json",
+        "r",
+        encoding="utf-8"
+    ) as f:
+
+        import json
+
+        config = json.load(f)
+
+    with tempfile.NamedTemporaryFile(
+        suffix=".wav",
+        delete=False
+    ) as wavfile:
+
+        wav_path = wavfile.name
+
+    subprocess.run(
+        [
+            config["piper_exe"],
+            "-m",
+            config["piper_model"],
+            "-f",
+            wav_path
+        ],
+        input=time_text,
+        text=True,
+        check=True
+    )
+
+    data, samplerate = sf.read(
+        wav_path
+    )
+
+    sd.play(
+        data,
+        samplerate
+    )
+
+    sd.wait()
 
 
 def execute(intent):
@@ -11,6 +57,8 @@ def execute(intent):
     name = intent["intent"]
 
     if name == "open_app":
+
+        from core.tts import speak
 
         speak(
             "assets/opening_application.wav"
@@ -26,17 +74,21 @@ def execute(intent):
 
         now = datetime.datetime.now()
 
-        response = now.strftime(
-            "Current time is %H %M"
+        time_text = now.strftime(
+            "%I %M %p"
+        ).lstrip("0")
+
+        _speak_dynamic_time(
+            f"The current time is {time_text}"
         )
 
-        speak(
-            "assets/current_time_is.wav"
+        return (
+            f"Current time is {time_text}"
         )
-
-        return response
 
     if name == "mute":
+
+        from core.tts import speak
 
         speak(
             "assets/volume_muted.wav"
@@ -51,6 +103,8 @@ def execute(intent):
         )
 
         return "Volume muted"
+
+    from core.tts import speak
 
     speak(
         "assets/unknown_command.wav"
