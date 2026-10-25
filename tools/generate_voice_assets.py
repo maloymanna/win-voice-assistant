@@ -1,4 +1,4 @@
-# Version: v1.0.3
+# Version: v1.0.5
 
 import json
 import subprocess
@@ -19,6 +19,9 @@ OUTPUTS = {
 
     "assets/opening_application.wav":
         "Opening application",
+
+    "assets/current_time_is.wav":
+        "The current time is",
 
     "assets/unknown_command.wav":
         "Unknown command",

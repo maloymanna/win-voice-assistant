@@ -1,4 +1,4 @@
-# Version: v1.0.4
+# Version: v1.0.5
 
 import subprocess
 import datetime
@@ -27,7 +27,11 @@ def execute(intent):
         now = datetime.datetime.now()
 
         response = now.strftime(
-            "Current time is %H:%M"
+            "Current time is %H %M"
+        )
+
+        speak(
+            "assets/current_time_is.wav"
         )
 
         return response
