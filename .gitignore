@@ -1,0 +1,5 @@
+# Ignore extra files
+.venv/
+recordings/
+logs/
+*.wav
