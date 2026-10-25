@@ -1,0 +1,19 @@
+{
+"open notepad": {
+"intent": "open_app",
+"target": "notepad.exe"
+},
+ 
+"open calculator": {
+"intent": "open_app",
+"target": "calc.exe"
+},
+ 
+"what time is it": {
+"intent": "time"
+},
+ 
+"mute volume": {
+"intent": "mute"
+}
+}

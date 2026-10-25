@@ -1,0 +1,9 @@
+{
+  "whisper_exe": "C:/Tools/whisper/main.exe",
+  "whisper_model": "C:/Tools/whisper/models/ggml-base.en.bin",
+
+  "piper_exe": "C:/Tools/piper/piper.exe",
+  "piper_model": "C:/Tools/piper/en_US-lessac-medium.onnx",
+
+  "record_seconds": 5
+}
