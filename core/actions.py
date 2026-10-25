@@ -1,14 +1,26 @@
-# Version: v1.0
+# Version: v1.0.2
 
 import subprocess
 import datetime
 
+from core.tts import speak
 
-def execute(intent):
+
+def execute(
+    intent,
+    piper_exe,
+    piper_model
+):
 
     name = intent["intent"]
 
     if name == "open_app":
+
+        speak(
+            piper_exe,
+            piper_model,
+            "Opening application"
+        )
 
         subprocess.Popen(
             intent["target"]
@@ -20,11 +32,25 @@ def execute(intent):
 
         now = datetime.datetime.now()
 
-        return now.strftime(
+        response = now.strftime(
             "Current time is %H:%M"
         )
 
+        speak(
+            piper_exe,
+            piper_model,
+            response
+        )
+
+        return response
+
     if name == "mute":
+
+        speak(
+            piper_exe,
+            piper_model,
+            "Volume muted"
+        )
 
         subprocess.run(
             [
@@ -35,5 +61,11 @@ def execute(intent):
         )
 
         return "Volume muted"
+
+    speak(
+        piper_exe,
+        piper_model,
+        "Unknown command"
+    )
 
     return "Unknown command"

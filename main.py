@@ -1,4 +1,4 @@
-# Version: v1.0
+# Version: v1.0.2
 
 import json
 
@@ -23,7 +23,20 @@ with open(
     CONFIG = json.load(f)
 
 
+VOICE_MAP = {
+    "Listening": "assets/listening.wav",
+    "Opening application": "assets/opening_application.wav",
+    "Unknown command": "assets/unknown_command.wav"
+}
+
+
 def listen():
+
+    speak(
+        CONFIG["piper_exe"],
+        CONFIG["piper_model"],
+        "Listening"
+    )
 
     notify("Listening")
 
@@ -40,15 +53,13 @@ def listen():
 
     intent = detect_intent(text)
 
-    response = execute(intent)
+    response = execute(
+        intent,
+        CONFIG["piper_exe"],
+        CONFIG["piper_model"]
+    )
 
     notify(response)
-
-    speak(
-        CONFIG["piper_exe"],
-        CONFIG["piper_model"],
-        response
-    )
 
 
 app = QApplication([])
