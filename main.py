@@ -1,4 +1,4 @@
-# Version: v1.0.2
+# Version: v1.0.4
 
 import json
 
@@ -23,20 +23,9 @@ with open(
     CONFIG = json.load(f)
 
 
-VOICE_MAP = {
-    "Listening": "assets/listening.wav",
-    "Opening application": "assets/opening_application.wav",
-    "Unknown command": "assets/unknown_command.wav"
-}
-
-
 def listen():
 
-    speak(
-        CONFIG["piper_exe"],
-        CONFIG["piper_model"],
-        "Listening"
-    )
+    speak("assets/listening.wav")
 
     notify("Listening")
 
@@ -53,11 +42,7 @@ def listen():
 
     intent = detect_intent(text)
 
-    response = execute(
-        intent,
-        CONFIG["piper_exe"],
-        CONFIG["piper_model"]
-    )
+    response = execute(intent)
 
     notify(response)
 
