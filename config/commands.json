@@ -9,11 +9,94 @@
     "target": "calc.exe"
   },
 
+  "open excel": {
+    "intent": "open_app",
+    "target": "excel.exe"
+  },
+
+  "open powerpoint": {
+    "intent": "open_app",
+    "target": "powerpnt.exe"
+  },
+
+  "open edge": {
+    "intent": "open_app",
+    "target": "msedge.exe"
+  },
+
+  "open microsoft": {
+    "intent": "open_url",
+    "target": "https://www.microsoft.com"
+  },
+
+  "go to microsoft": {
+    "intent": "open_url",
+    "target": "https://www.microsoft.com"
+  },
+
+  "open github": {
+    "intent": "open_url",
+    "target": "https://github.com"
+  },
+
+  "go to github": {
+    "intent": "open_url",
+    "target": "https://github.com"
+  },
+
+  "open youtube": {
+    "intent": "open_url",
+    "target": "https://youtube.com"
+  },
+
+  "go to youtube": {
+    "intent": "open_url",
+    "target": "https://youtube.com"
+  },
+
+  "open wiki": {
+    "intent": "open_url",
+    "target": "https://wikipedia.com"
+  },
+
+  "open outlook": {
+    "intent": "open_url",
+    "target": "https://outlook.office.com"
+  },
+
+  "open jira": {
+    "intent": "open_url",
+    "target": "https://jira.company.com"
+  },
+
+  "open ticket tool": {
+    "intent": "open_url",
+    "target": "https://company.service-now.com"
+  },
+
   "what time is it": {
     "intent": "time"
   },
 
   "mute volume": {
     "intent": "mute"
+  },
+
+  "start work": {
+    "intent": "workflow",
+    "steps": [
+      {
+        "intent": "open_app",
+        "target": "msedge.exe"
+      },
+      {
+        "intent": "open_url",
+        "target": "https://company.service-now.com"
+      },
+      {
+        "intent": "open_url",
+        "target": "https://jira.company.com"
+      }
+    ]
   }
 }

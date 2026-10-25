@@ -1,11 +1,14 @@
-# Version: v1.0.6
+# Version: v1.0.8
 
 import subprocess
 import datetime
 import tempfile
+import json
 
 import sounddevice as sd
 import soundfile as sf
+
+from core.tts import speak
 
 
 def _speak_dynamic_time(time_text):
@@ -15,8 +18,6 @@ def _speak_dynamic_time(time_text):
         "r",
         encoding="utf-8"
     ) as f:
-
-        import json
 
         config = json.load(f)
 
@@ -58,8 +59,6 @@ def execute(intent):
 
     if name == "open_app":
 
-        from core.tts import speak
-
         speak(
             "assets/opening_application.wav"
         )
@@ -69,6 +68,48 @@ def execute(intent):
         )
 
         return "Opening application"
+
+    if name == "open_url":
+
+        speak(
+            "assets/opening_application.wav"
+        )
+
+        subprocess.Popen(
+            [
+                "msedge.exe",
+                "--new-tab",
+                intent["target"]
+            ]
+        )
+
+        return "Opening website"
+
+    if name == "workflow":
+
+        speak(
+            "assets/opening_application.wav"
+        )
+
+        for step in intent["steps"]:
+
+            if step["intent"] == "open_url":
+
+                subprocess.Popen(
+                    [
+                        "msedge.exe",
+                        "--new-tab",
+                        step["target"]
+                    ]
+                )
+
+            elif step["intent"] == "open_app":
+
+                subprocess.Popen(
+                    step["target"]
+                )
+
+        return "Workflow completed"
 
     if name == "time":
 
@@ -88,8 +129,6 @@ def execute(intent):
 
     if name == "mute":
 
-        from core.tts import speak
-
         speak(
             "assets/volume_muted.wav"
         )
@@ -103,8 +142,6 @@ def execute(intent):
         )
 
         return "Volume muted"
-
-    from core.tts import speak
 
     speak(
         "assets/unknown_command.wav"
