@@ -1,14 +1,26 @@
-# Version: v1.0.9
+# Version: v1.1.0
 
 import subprocess
 import datetime
 import tempfile
 import json
+import yaml
 
 import sounddevice as sd
 import soundfile as sf
 
 from core.tts import speak
+
+
+def _load_yaml():
+
+    with open(
+        "config/commands.yaml",
+        "r",
+        encoding="utf-8"
+    ) as f:
+
+        return yaml.safe_load(f)
 
 
 def _speak_dynamic_time(time_text):
@@ -53,13 +65,49 @@ def _speak_dynamic_time(time_text):
     sd.wait()
 
 
+def _run_workflow(workflow_steps):
+
+    yaml_config = _load_yaml()
+
+    apps = yaml_config.get(
+        "apps",
+        {}
+    )
+
+    urls = yaml_config.get(
+        "urls",
+        {}
+    )
+
+    for step in workflow_steps:
+
+        if step in apps:
+
+            subprocess.Popen(
+                apps[step]["target"]
+            )
+
+        elif step in urls:
+
+            subprocess.Popen(
+                [
+                    "cmd",
+                    "/c",
+                    "start",
+                    "",
+                    urls[step]["target"]
+                ],
+                shell=True
+            )
+
+
 def execute(intent):
 
-    print(f"ACTION_INTENT: {intent}")
+    print(
+        f"ACTION_INTENT: {intent}"
+    )
 
     name = intent["intent"]
-
-    print(f"ACTION_NAME: {name}")
 
     if name == "open_app":
 
@@ -89,10 +137,13 @@ def execute(intent):
 
         subprocess.Popen(
             [
-                "msedge.exe",
-                "--new-tab",
+                "cmd",
+                "/c",
+                "start",
+                "",
                 intent["target"]
-            ]
+            ],
+            shell=True
         )
 
         return "Opening website"
@@ -100,34 +151,16 @@ def execute(intent):
     if name == "workflow":
 
         print(
-            f"WORKFLOW: {intent}"
+            f"WORKFLOW: {intent['steps']}"
         )
 
         speak(
             "assets/opening_application.wav"
         )
 
-        for step in intent["steps"]:
-
-            print(
-                f"WORKFLOW STEP: {step}"
-            )
-
-            if step["intent"] == "open_url":
-
-                subprocess.Popen(
-                    [
-                        "msedge.exe",
-                        "--new-tab",
-                        step["target"]
-                    ]
-                )
-
-            elif step["intent"] == "open_app":
-
-                subprocess.Popen(
-                    step["target"]
-                )
+        _run_workflow(
+            intent["steps"]
+        )
 
         return "Workflow completed"
 
@@ -166,3 +199,5 @@ def execute(intent):
     speak(
         "assets/unknown_command.wav"
     )
+
+    return "Unknown command"
