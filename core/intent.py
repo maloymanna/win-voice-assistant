@@ -1,5 +1,5 @@
 # core/intent.py
-# Version: v1.1.2
+# Version: v1.1.3
 
 import re
 import yaml
@@ -55,9 +55,21 @@ def _normalize(text):
 
     text = text.lower()
 
+    timestamp_pattern = (
+        r"\[\d{2}:\d{2}:\d{2}\.\d+"
+        r"\s*-->\s*"
+        r"\d{2}:\d{2}:\d{2}\.\d+\]"
+    )
+
+    text = re.sub(
+        timestamp_pattern,
+        "",
+        text
+    )
+
     text = re.sub(
         r"[^a-z0-9\-\s]",
-        "",
+        " ",
         text
     )
 
