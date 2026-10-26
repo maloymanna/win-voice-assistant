@@ -79,7 +79,17 @@ def _run_workflow(workflow_steps):
         {}
     )
 
+    aliases = yaml_config.get(
+        "aliases",
+        {}
+    )
+
     for step in workflow_steps:
+
+        step = aliases.get(
+            step,
+            step
+        )
 
         if step in apps:
 
@@ -98,6 +108,12 @@ def _run_workflow(workflow_steps):
                     urls[step]["target"]
                 ],
                 shell=True
+            )
+
+        else:
+
+            print(
+                f"WORKFLOW STEP NOT FOUND: {step}"
             )
 
 

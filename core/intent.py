@@ -1,4 +1,5 @@
-# Version: v1.1.1
+# core/intent.py
+# Version: v1.1.2
 
 import re
 import yaml
@@ -34,6 +35,22 @@ WORKFLOWS = CONFIG.get(
 )
 
 
+REQUIRED_SECTIONS = [
+    "apps",
+    "urls",
+    "aliases",
+    "workflows"
+]
+
+for section in REQUIRED_SECTIONS:
+
+    if section not in CONFIG:
+
+        raise RuntimeError(
+            f"commands.yaml missing section: {section}"
+        )
+
+
 def _normalize(text):
 
     text = text.lower()
@@ -61,6 +78,24 @@ def _resolve_alias(name):
     )
 
 
+def _build_app_intent(name):
+
+    return {
+        "intent": "open_app",
+        "name": name,
+        "target": APPS[name]["target"]
+    }
+
+
+def _build_url_intent(name):
+
+    return {
+        "intent": "open_url",
+        "name": name,
+        "target": URLS[name]["target"]
+    }
+
+
 def detect_intent(text):
 
     text = _normalize(text)
@@ -69,63 +104,9 @@ def detect_intent(text):
         f"INTENT_MATCH_START: [{text}]"
     )
 
-    if text.startswith("open "):
-
-        thing = text[5:].strip()
-
-        thing = _resolve_alias(
-            thing
-        )
-
-        if thing in APPS:
-
-            result = {
-                "intent": "open_app",
-                "name": thing,
-                "target": APPS[thing]["target"]
-            }
-
-            print(
-                f"MATCHED INTENT: {result}"
-            )
-
-            return result
-
-        if thing in URLS:
-
-            result = {
-                "intent": "open_url",
-                "name": thing,
-                "target": URLS[thing]["target"]
-            }
-
-            print(
-                f"MATCHED INTENT: {result}"
-            )
-
-            return result
-
-    if text.startswith("go to "):
-
-        thing = text[6:].strip()
-
-        thing = _resolve_alias(
-            thing
-        )
-
-        if thing in URLS:
-
-            result = {
-                "intent": "open_url",
-                "name": thing,
-                "target": URLS[thing]["target"]
-            }
-
-            print(
-                f"MATCHED INTENT: {result}"
-            )
-
-            return result
+    #
+    # workflows first
+    #
 
     if text in WORKFLOWS:
 
@@ -141,6 +122,108 @@ def detect_intent(text):
 
         return result
 
+    #
+    # direct aliases
+    #
+
+    resolved = _resolve_alias(
+        text
+    )
+
+    if resolved in APPS:
+
+        result = _build_app_intent(
+            resolved
+        )
+
+        print(
+            f"MATCHED INTENT: {result}"
+        )
+
+        return result
+
+    if resolved in URLS:
+
+        result = _build_url_intent(
+            resolved
+        )
+
+        print(
+            f"MATCHED INTENT: {result}"
+        )
+
+        return result
+
+    #
+    # open / launch / start
+    #
+
+    for prefix in [
+        "open ",
+        "launch ",
+        "start "
+    ]:
+
+        if text.startswith(prefix):
+
+            thing = text[len(prefix):].strip()
+
+            thing = _resolve_alias(
+                thing
+            )
+
+            if thing in APPS:
+
+                result = _build_app_intent(
+                    thing
+                )
+
+                print(
+                    f"MATCHED INTENT: {result}"
+                )
+
+                return result
+
+            if thing in URLS:
+
+                result = _build_url_intent(
+                    thing
+                )
+
+                print(
+                    f"MATCHED INTENT: {result}"
+                )
+
+                return result
+
+    #
+    # go to <site>
+    #
+
+    if text.startswith("go to "):
+
+        thing = text[6:].strip()
+
+        thing = _resolve_alias(
+            thing
+        )
+
+        if thing in URLS:
+
+            result = _build_url_intent(
+                thing
+            )
+
+            print(
+                f"MATCHED INTENT: {result}"
+            )
+
+            return result
+
+    #
+    # built-ins
+    #
+
     if text == "what time is it":
 
         return {
@@ -153,8 +236,11 @@ def detect_intent(text):
             "intent": "mute"
         }
 
-    print("NO MATCH FOUND")
+    print(
+        f"NO MATCH FOUND: [{text}]"
+    )
 
     return {
-        "intent": "unknown"
+        "intent": "unknown",
+        "spoken_text": text
     }
