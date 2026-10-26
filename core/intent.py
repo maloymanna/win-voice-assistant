@@ -1,5 +1,6 @@
-# Version: v1.1.0
+# Version: v1.1.1
 
+import re
 import yaml
 
 
@@ -33,6 +34,25 @@ WORKFLOWS = CONFIG.get(
 )
 
 
+def _normalize(text):
+
+    text = text.lower()
+
+    text = re.sub(
+        r"[^a-z0-9\-\s]",
+        "",
+        text
+    )
+
+    text = re.sub(
+        r"\s+",
+        " ",
+        text
+    ).strip()
+
+    return text
+
+
 def _resolve_alias(name):
 
     return ALIASES.get(
@@ -43,7 +63,7 @@ def _resolve_alias(name):
 
 def detect_intent(text):
 
-    text = text.lower().strip()
+    text = _normalize(text)
 
     print(
         f"INTENT_MATCH_START: [{text}]"
@@ -59,19 +79,31 @@ def detect_intent(text):
 
         if thing in APPS:
 
-            return {
+            result = {
                 "intent": "open_app",
                 "name": thing,
                 "target": APPS[thing]["target"]
             }
 
+            print(
+                f"MATCHED INTENT: {result}"
+            )
+
+            return result
+
         if thing in URLS:
 
-            return {
+            result = {
                 "intent": "open_url",
                 "name": thing,
                 "target": URLS[thing]["target"]
             }
+
+            print(
+                f"MATCHED INTENT: {result}"
+            )
+
+            return result
 
     if text.startswith("go to "):
 
@@ -83,19 +115,31 @@ def detect_intent(text):
 
         if thing in URLS:
 
-            return {
+            result = {
                 "intent": "open_url",
                 "name": thing,
                 "target": URLS[thing]["target"]
             }
 
+            print(
+                f"MATCHED INTENT: {result}"
+            )
+
+            return result
+
     if text in WORKFLOWS:
 
-        return {
+        result = {
             "intent": "workflow",
             "name": text,
             "steps": WORKFLOWS[text]
         }
+
+        print(
+            f"MATCHED INTENT: {result}"
+        )
+
+        return result
 
     if text == "what time is it":
 
@@ -108,6 +152,8 @@ def detect_intent(text):
         return {
             "intent": "mute"
         }
+
+    print("NO MATCH FOUND")
 
     return {
         "intent": "unknown"
