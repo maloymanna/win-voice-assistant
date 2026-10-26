@@ -1,5 +1,4 @@
-# core/intent.py
-# Version: v1.1.3
+# Version: v1.2.2
 
 import re
 import yaml
@@ -34,12 +33,18 @@ WORKFLOWS = CONFIG.get(
     {}
 )
 
+EXIT = CONFIG.get(
+    "exit",
+    {}
+)
+
 
 REQUIRED_SECTIONS = [
     "apps",
     "urls",
     "aliases",
-    "workflows"
+    "workflows",
+    "exit"
 ]
 
 for section in REQUIRED_SECTIONS:
@@ -112,12 +117,34 @@ def detect_intent(text):
 
     text = _normalize(text)
 
+    #
+    # Global alias resolution
+    #
+
+    text = _resolve_alias(text)
+
     print(
         f"INTENT_MATCH_START: [{text}]"
     )
 
     #
-    # workflows first
+    # Exit intent
+    #
+
+    if text in EXIT:
+
+        result = {
+            "intent": "exit"
+        }
+
+        print(
+            f"MATCHED INTENT: {result}"
+        )
+
+        return result
+
+    #
+    # Workflows
     #
 
     if text in WORKFLOWS:
@@ -135,17 +162,13 @@ def detect_intent(text):
         return result
 
     #
-    # direct aliases
+    # Direct app/url names
     #
 
-    resolved = _resolve_alias(
-        text
-    )
-
-    if resolved in APPS:
+    if text in APPS:
 
         result = _build_app_intent(
-            resolved
+            text
         )
 
         print(
@@ -154,10 +177,10 @@ def detect_intent(text):
 
         return result
 
-    if resolved in URLS:
+    if text in URLS:
 
         result = _build_url_intent(
-            resolved
+            text
         )
 
         print(
@@ -209,7 +232,7 @@ def detect_intent(text):
                 return result
 
     #
-    # go to <site>
+    # go to
     #
 
     if text.startswith("go to "):
@@ -233,7 +256,7 @@ def detect_intent(text):
             return result
 
     #
-    # built-ins
+    # Built-ins
     #
 
     if text == "what time is it":
@@ -246,17 +269,6 @@ def detect_intent(text):
 
         return {
             "intent": "mute"
-        }
-
-    if text in [
-        "exit",
-        "quit",
-        "close assistant",
-        "shutdown assistant"
-    ]:
-
-        return {
-            "intent": "exit"
         }
 
     print(

@@ -20,6 +20,9 @@ OUTPUTS = {
     "assets/opening_application.wav":
         "Opening application",
 
+    "assets/exiting_assistant.wav":
+        "Exiting assistant",
+
     "assets/current_time_is.wav":
         "The current time is",
 

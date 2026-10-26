@@ -1,4 +1,4 @@
-# Version: v1.1.2
+# Version: v1.2.2
 
 import subprocess
 import datetime
@@ -214,7 +214,12 @@ def execute(intent):
 
     if name == "exit":
 
-        return "__EXIT__"    
+    speak(
+        "assets/exiting_assistant.wav"
+    )
+
+    return "__EXIT__"
+
 
     speak(
         "assets/unknown_command.wav"

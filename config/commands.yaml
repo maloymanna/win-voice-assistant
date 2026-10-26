@@ -31,14 +31,23 @@ urls:
     target: "https://company.service-now.com"
 
 
-aliases:
-
-  ticket tool: ticket-tool
-
-
 workflows:
 
   start work:
     - edge
     - ticket-tool
     - jira
+
+
+exit:
+
+  exit: true
+
+
+aliases:
+
+  ticket tool: ticket-tool
+
+  quit: exit
+  close assistant: exit
+  shutdown assistant: exit
