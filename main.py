@@ -1,12 +1,12 @@
-# Version: v1.0.9
+# Version: v1.2.0
 
 import json
+import threading
 
 from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QIcon
 
 from ui.tray import AssistantTray
-
 from core.audio import record_audio
 from core.stt import transcribe
 from core.tts import speak
@@ -14,27 +14,55 @@ from core.intent import detect_intent
 from core.actions import execute
 from core.notifier import notify
 
+import keyboard
+
 
 with open(
     "config/config.json",
     "r",
     encoding="utf-8"
 ) as f:
+
     CONFIG = json.load(f)
 
 
-def listen():
+app = QApplication([])
+
+tray = AssistantTray(
+    idle_icon="assets/tray_idle.ico",
+    listening_icon="assets/tray_listening.ico"
+)
+
+
+def shutdown_assistant():
+
+    print("SHUTDOWN REQUESTED")
+
+    tray.tray.hide()
+
+    app.quit()
+
+
+def run_voice_request():
 
     print("\n========== NEW REQUEST ==========")
 
-    speak("assets/listening.wav")
+    try:
 
-    notify("Listening")
+        tray.set_listening()
 
-    record_audio(
-        "recordings/temp.wav",
-        CONFIG["record_seconds"]
-    )
+        speak("assets/listening.wav")
+
+        notify("Listening")
+
+        record_audio(
+            "recordings/temp.wav",
+            CONFIG["record_seconds"]
+        )
+
+    finally:
+
+        tray.set_idle()
 
     text = transcribe(
         CONFIG["whisper_exe"],
@@ -52,14 +80,25 @@ def listen():
 
     print(f"RESPONSE: {response}")
 
+    if response == "__EXIT__":
+
+        shutdown_assistant()
+        return
+
     notify(response)
 
 
-app = QApplication([])
+def hotkey_callback():
 
-tray = AssistantTray(
-    QIcon("assets/icon_idle.ico"),
-    listen
+    threading.Thread(
+        target=run_voice_request,
+        daemon=True
+    ).start()
+
+
+keyboard.add_hotkey(
+    "windows+q",
+    hotkey_callback
 )
 
 tray.show()

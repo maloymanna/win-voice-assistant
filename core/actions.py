@@ -212,6 +212,10 @@ def execute(intent):
 
         return "Volume muted"
 
+    if name == "exit":
+
+        return "__EXIT__"    
+
     speak(
         "assets/unknown_command.wav"
     )

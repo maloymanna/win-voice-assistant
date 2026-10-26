@@ -1,4 +1,4 @@
-# Version: v1.0
+# Version: v1.2.0
 
 from PySide6.QtWidgets import (
     QSystemTrayIcon,
@@ -6,18 +6,31 @@ from PySide6.QtWidgets import (
     QApplication
 )
 
-from PySide6.QtGui import QAction
+from PySide6.QtGui import (
+    QAction,
+    QIcon
+)
 
 
 class AssistantTray:
 
     def __init__(
         self,
-        icon,
-        listen_callback
+        idle_icon,
+        listening_icon
     ):
 
-        self.tray = QSystemTrayIcon(icon)
+        self.idle_icon = QIcon(
+            idle_icon
+        )
+
+        self.listening_icon = QIcon(
+            listening_icon
+        )
+
+        self.tray = QSystemTrayIcon(
+            self.idle_icon
+        )
 
         menu = QMenu()
 
@@ -27,20 +40,25 @@ class AssistantTray:
             QApplication.instance().quit
         )
 
-        menu.addAction(exit_action)
-
-        self.tray.setContextMenu(menu)
-
-        self.tray.activated.connect(
-            self.on_click
+        menu.addAction(
+            exit_action
         )
 
-        self.listen_callback = listen_callback
+        self.tray.setContextMenu(
+            menu
+        )
 
-    def on_click(self, reason):
+    def set_idle(self):
 
-        if reason == QSystemTrayIcon.Trigger:
-            self.listen_callback()
+        self.tray.setIcon(
+            self.idle_icon
+        )
+
+    def set_listening(self):
+
+        self.tray.setIcon(
+            self.listening_icon
+        )
 
     def show(self):
 

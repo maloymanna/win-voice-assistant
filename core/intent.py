@@ -248,6 +248,17 @@ def detect_intent(text):
             "intent": "mute"
         }
 
+    if text in [
+        "exit",
+        "quit",
+        "close assistant",
+        "shutdown assistant"
+    ]:
+
+        return {
+            "intent": "exit"
+        }
+
     print(
         f"NO MATCH FOUND: [{text}]"
     )
