@@ -1,4 +1,4 @@
-# Version: v1.0.8
+# Version: v1.0.9
 
 import subprocess
 import datetime
@@ -55,9 +55,17 @@ def _speak_dynamic_time(time_text):
 
 def execute(intent):
 
+    print(f"ACTION_INTENT: {intent}")
+
     name = intent["intent"]
 
+    print(f"ACTION_NAME: {name}")
+
     if name == "open_app":
+
+        print(
+            f"OPEN_APP TARGET: {intent['target']}"
+        )
 
         speak(
             "assets/opening_application.wav"
@@ -70,6 +78,10 @@ def execute(intent):
         return "Opening application"
 
     if name == "open_url":
+
+        print(
+            f"OPEN_URL TARGET: {intent['target']}"
+        )
 
         speak(
             "assets/opening_application.wav"
@@ -87,11 +99,19 @@ def execute(intent):
 
     if name == "workflow":
 
+        print(
+            f"WORKFLOW: {intent}"
+        )
+
         speak(
             "assets/opening_application.wav"
         )
 
         for step in intent["steps"]:
+
+            print(
+                f"WORKFLOW STEP: {step}"
+            )
 
             if step["intent"] == "open_url":
 
@@ -146,5 +166,3 @@ def execute(intent):
     speak(
         "assets/unknown_command.wav"
     )
-
-    return "Unknown command"

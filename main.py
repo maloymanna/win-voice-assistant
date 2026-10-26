@@ -1,4 +1,4 @@
-# Version: v1.0.4
+# Version: v1.0.9
 
 import json
 
@@ -25,6 +25,8 @@ with open(
 
 def listen():
 
+    print("\n========== NEW REQUEST ==========")
+
     speak("assets/listening.wav")
 
     notify("Listening")
@@ -40,9 +42,15 @@ def listen():
         "recordings/temp.wav"
     )
 
+    print(f"WHISPER TEXT: [{text}]")
+
     intent = detect_intent(text)
 
+    print(f"INTENT OBJECT: {intent}")
+
     response = execute(intent)
+
+    print(f"RESPONSE: {response}")
 
     notify(response)
 
