@@ -1,18 +1,18 @@
-# Version: v1.2.0
+# Version: v1.2.1
 
 import json
 import threading
+import time
 
 from PySide6.QtWidgets import QApplication
-from PySide6.QtGui import QIcon
 
 from ui.tray import AssistantTray
 from core.audio import record_audio
 from core.stt import transcribe
-from core.tts import speak
 from core.intent import detect_intent
 from core.actions import execute
 from core.notifier import notify
+from core.tts import speak
 
 import keyboard
 
@@ -51,9 +51,11 @@ def run_voice_request():
 
         tray.set_listening()
 
-        speak("assets/listening.wav")
-
         notify("Listening")
+
+        speak(
+            "assets/listening.wav"
+        )
 
         record_audio(
             "recordings/temp.wav",
@@ -70,19 +72,30 @@ def run_voice_request():
         "recordings/temp.wav"
     )
 
-    print(f"WHISPER TEXT: [{text}]")
+    print(
+        f"WHISPER TEXT: [{text}]"
+    )
 
-    intent = detect_intent(text)
+    intent = detect_intent(
+        text
+    )
 
-    print(f"INTENT OBJECT: {intent}")
+    print(
+        f"INTENT OBJECT: {intent}"
+    )
 
-    response = execute(intent)
+    response = execute(
+        intent
+    )
 
-    print(f"RESPONSE: {response}")
+    print(
+        f"RESPONSE: {response}"
+    )
 
     if response == "__EXIT__":
 
         shutdown_assistant()
+
         return
 
     notify(response)
@@ -96,10 +109,40 @@ def hotkey_callback():
     ).start()
 
 
-keyboard.add_hotkey(
-    "windows+q",
-    hotkey_callback
+#
+# Double-tap RIGHT CTRL
+#
+
+DOUBLE_TAP_WINDOW = 0.45
+
+last_right_ctrl = 0
+
+
+def right_ctrl_pressed(event):
+
+    global last_right_ctrl
+
+    now = time.time()
+
+    if (
+        now - last_right_ctrl
+        <= DOUBLE_TAP_WINDOW
+    ):
+
+        last_right_ctrl = 0
+
+        hotkey_callback()
+
+    else:
+
+        last_right_ctrl = now
+
+
+keyboard.on_press_key(
+    "right ctrl",
+    right_ctrl_pressed
 )
+
 
 tray.show()
 
