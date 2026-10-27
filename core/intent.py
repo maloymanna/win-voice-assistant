@@ -1,4 +1,4 @@
-# Version: v1.2.2
+# Version: v1.3.0
 
 import re
 import yaml
@@ -13,18 +13,8 @@ with open(
     CONFIG = yaml.safe_load(f)
 
 
-APPS = CONFIG.get(
-    "apps",
-    {}
-)
-
-URLS = CONFIG.get(
-    "urls",
-    {}
-)
-
-ALIASES = CONFIG.get(
-    "aliases",
+COMMANDS = CONFIG.get(
+    "commands",
     {}
 )
 
@@ -38,10 +28,14 @@ EXIT = CONFIG.get(
     {}
 )
 
+ALIASES = CONFIG.get(
+    "aliases",
+    {}
+)
+
 
 REQUIRED_SECTIONS = [
-    "apps",
-    "urls",
+    "commands",
     "aliases",
     "workflows",
     "exit"
@@ -87,48 +81,28 @@ def _normalize(text):
     return text
 
 
-def _resolve_alias(name):
+def _resolve_alias(text):
 
     return ALIASES.get(
-        name,
-        name
+        text,
+        text
     )
-
-
-def _build_app_intent(name):
-
-    return {
-        "intent": "open_app",
-        "name": name,
-        "target": APPS[name]["target"]
-    }
-
-
-def _build_url_intent(name):
-
-    return {
-        "intent": "open_url",
-        "name": name,
-        "target": URLS[name]["target"]
-    }
 
 
 def detect_intent(text):
 
     text = _normalize(text)
 
-    #
-    # Global alias resolution
-    #
-
-    text = _resolve_alias(text)
+    text = _resolve_alias(
+        text
+    )
 
     print(
         f"INTENT_MATCH_START: [{text}]"
     )
 
     #
-    # Exit intent
+    # Exit
     #
 
     if text in EXIT:
@@ -144,7 +118,7 @@ def detect_intent(text):
         return result
 
     #
-    # Workflows
+    # Workflow
     #
 
     if text in WORKFLOWS:
@@ -162,98 +136,22 @@ def detect_intent(text):
         return result
 
     #
-    # Direct app/url names
+    # Command
     #
 
-    if text in APPS:
+    if text in COMMANDS:
 
-        result = _build_app_intent(
-            text
-        )
+        result = {
+            "intent": "command",
+            "name": text,
+            "command": COMMANDS[text]
+        }
 
         print(
             f"MATCHED INTENT: {result}"
         )
 
         return result
-
-    if text in URLS:
-
-        result = _build_url_intent(
-            text
-        )
-
-        print(
-            f"MATCHED INTENT: {result}"
-        )
-
-        return result
-
-    #
-    # open / launch / start
-    #
-
-    for prefix in [
-        "open ",
-        "launch ",
-        "start "
-    ]:
-
-        if text.startswith(prefix):
-
-            thing = text[len(prefix):].strip()
-
-            thing = _resolve_alias(
-                thing
-            )
-
-            if thing in APPS:
-
-                result = _build_app_intent(
-                    thing
-                )
-
-                print(
-                    f"MATCHED INTENT: {result}"
-                )
-
-                return result
-
-            if thing in URLS:
-
-                result = _build_url_intent(
-                    thing
-                )
-
-                print(
-                    f"MATCHED INTENT: {result}"
-                )
-
-                return result
-
-    #
-    # go to
-    #
-
-    if text.startswith("go to "):
-
-        thing = text[6:].strip()
-
-        thing = _resolve_alias(
-            thing
-        )
-
-        if thing in URLS:
-
-            result = _build_url_intent(
-                thing
-            )
-
-            print(
-                f"MATCHED INTENT: {result}"
-            )
-
-            return result
 
     #
     # Built-ins

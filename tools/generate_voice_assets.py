@@ -1,4 +1,4 @@
-# Version: v1.0.5
+# Version: v1.2.2
 
 import json
 import subprocess

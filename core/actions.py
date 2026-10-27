@@ -1,4 +1,5 @@
-# Version: v1.2.2
+# core/actions.py
+# Version: v1.3.0
 
 import subprocess
 import datetime
@@ -69,44 +70,21 @@ def _run_workflow(workflow_steps):
 
     yaml_config = _load_yaml()
 
-    apps = yaml_config.get(
-        "apps",
-        {}
-    )
-
-    urls = yaml_config.get(
-        "urls",
-        {}
-    )
-
-    aliases = yaml_config.get(
-        "aliases",
+    commands = yaml_config.get(
+        "commands",
         {}
     )
 
     for step in workflow_steps:
 
-        step = aliases.get(
-            step,
-            step
-        )
+        if step in commands:
 
-        if step in apps:
-
-            subprocess.Popen(
-                apps[step]["target"]
+            print(
+                f"WORKFLOW COMMAND: {commands[step]}"
             )
 
-        elif step in urls:
-
             subprocess.Popen(
-                [
-                    "cmd",
-                    "/c",
-                    "start",
-                    "",
-                    urls[step]["target"]
-                ],
+                commands[step],
                 shell=True
             )
 
@@ -125,10 +103,14 @@ def execute(intent):
 
     name = intent["intent"]
 
-    if name == "open_app":
+    #
+    # Generic command execution
+    #
+
+    if name == "command":
 
         print(
-            f"OPEN_APP TARGET: {intent['target']}"
+            f"COMMAND: {intent['command']}"
         )
 
         speak(
@@ -136,33 +118,15 @@ def execute(intent):
         )
 
         subprocess.Popen(
-            intent["target"]
-        )
-
-        return "Opening application"
-
-    if name == "open_url":
-
-        print(
-            f"OPEN_URL TARGET: {intent['target']}"
-        )
-
-        speak(
-            "assets/opening_application.wav"
-        )
-
-        subprocess.Popen(
-            [
-                "cmd",
-                "/c",
-                "start",
-                "",
-                intent["target"]
-            ],
+            intent["command"],
             shell=True
         )
 
-        return "Opening website"
+        return "Command executed"
+
+    #
+    # Workflow
+    #
 
     if name == "workflow":
 
@@ -180,6 +144,10 @@ def execute(intent):
 
         return "Workflow completed"
 
+    #
+    # Time
+    #
+
     if name == "time":
 
         now = datetime.datetime.now()
@@ -195,6 +163,10 @@ def execute(intent):
         return (
             f"Current time is {time_text}"
         )
+
+    #
+    # Volume Mute
+    #
 
     if name == "mute":
 
@@ -212,14 +184,21 @@ def execute(intent):
 
         return "Volume muted"
 
+    #
+    # Exit Assistant
+    #
+
     if name == "exit":
 
-    speak(
-        "assets/exiting_assistant.wav"
-    )
+        speak(
+            "assets/exiting_assistant.wav"
+        )
 
-    return "__EXIT__"
+        return "__EXIT__"
 
+    #
+    # Unknown
+    #
 
     speak(
         "assets/unknown_command.wav"
