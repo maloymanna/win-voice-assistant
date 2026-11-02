@@ -16,6 +16,18 @@ commands:
 
   ticket-tool: '"C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe" https://company.service-now.com'
 
+  open downloads: 'explorer.exe shell:Downloads'
+
+  open documents: 'explorer.exe shell:Personal'
+
+  focus on: 'powershell -Command "Set-ItemProperty -Path HKCU:\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings -Name NOC_GLOBAL_SETTING_TOASTS_ENABLED -Value 0"'
+
+  focus off: 'powershell -Command "Set-ItemProperty -Path HKCU:\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings -Name NOC_GLOBAL_SETTING_TOASTS_ENABLED -Value 1"'
+
+  search web: '"C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe" https://www.google.com/search?q='
+
+  take screenshot: '__TAKE_SCREENSHOT__'
+
 
 workflows:
 
@@ -53,6 +65,24 @@ aliases:
   open jira: jira
 
   ticket tool: ticket-tool
+
+  open my downloads: open downloads
+  show downloads: open downloads
+
+  open my documents: open documents
+  show documents: open documents
+
+  do not disturb: focus on
+  enable focus: focus on
+  disable focus: focus off
+  turn on focus: focus on
+  turn off focus: focus off
+
+  search the web: search web
+  google: search web
+
+  screenshot: take screenshot
+  capture screen: take screenshot
 
   quit: exit
   shutdown assistant: exit

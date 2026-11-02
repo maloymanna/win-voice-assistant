@@ -1,4 +1,9 @@
-# Version: v1.0.4
+# Version: v1.1.0
+
+import json
+import os
+import subprocess
+import tempfile
 
 import sounddevice as sd
 import soundfile as sf
@@ -16,3 +21,47 @@ def speak(wav_file):
     )
 
     sd.wait()
+
+
+def speak_text(text):
+
+    if not text or not str(text).strip():
+        return
+
+    with open(
+        "config/config.json",
+        "r",
+        encoding="utf-8"
+    ) as f:
+
+        config = json.load(f)
+
+    fd, wav_path = tempfile.mkstemp(
+        suffix=".wav"
+    )
+
+    os.close(fd)
+
+    try:
+
+        subprocess.run(
+            [
+                config["piper_exe"],
+                "-m",
+                config["piper_model"],
+                "-f",
+                wav_path
+            ],
+            input=str(text),
+            text=True,
+            check=True
+        )
+
+        speak(wav_path)
+
+    finally:
+
+        try:
+            os.remove(wav_path)
+        except OSError:
+            pass

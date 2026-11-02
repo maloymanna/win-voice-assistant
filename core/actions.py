@@ -1,16 +1,10 @@
 # core/actions.py
-# Version: v1.3.0
+# Version: v1.4.0
 
 import subprocess
 import datetime
-import tempfile
-import json
+import os
 import yaml
-
-import sounddevice as sd
-import soundfile as sf
-
-from core.tts import speak
 
 
 def _load_yaml():
@@ -22,48 +16,6 @@ def _load_yaml():
     ) as f:
 
         return yaml.safe_load(f)
-
-
-def _speak_dynamic_time(time_text):
-
-    with open(
-        "config/config.json",
-        "r",
-        encoding="utf-8"
-    ) as f:
-
-        config = json.load(f)
-
-    with tempfile.NamedTemporaryFile(
-        suffix=".wav",
-        delete=False
-    ) as wavfile:
-
-        wav_path = wavfile.name
-
-    subprocess.run(
-        [
-            config["piper_exe"],
-            "-m",
-            config["piper_model"],
-            "-f",
-            wav_path
-        ],
-        input=time_text,
-        text=True,
-        check=True
-    )
-
-    data, samplerate = sf.read(
-        wav_path
-    )
-
-    sd.play(
-        data,
-        samplerate
-    )
-
-    sd.wait()
 
 
 def _run_workflow(workflow_steps):
@@ -95,6 +47,48 @@ def _run_workflow(workflow_steps):
             )
 
 
+def _take_screenshot():
+
+    ts = datetime.datetime.now().strftime(
+        "%Y%m%d_%H%M%S"
+    )
+
+    pictures = os.path.join(
+        os.path.expanduser("~"),
+        "Pictures"
+    )
+
+    os.makedirs(
+        pictures,
+        exist_ok=True
+    )
+
+    path = os.path.join(
+        pictures,
+        f"Screenshot_{ts}.png"
+    )
+
+    ps_script = (
+        "Add-Type -AssemblyName System.Windows.Forms,System.Drawing;"
+        "$b=[System.Windows.Forms.SystemInformation]::VirtualScreen;"
+        "$bmp=New-Object System.Drawing.Bitmap($b.Width,$b.Height);"
+        "$g=[System.Drawing.Graphics]::FromImage($bmp);"
+        "$g.CopyFromScreen($b.Location,[System.Drawing.Point]::Empty,$b.Size);"
+        f"$bmp.Save('{path}');"
+    )
+
+    subprocess.run(
+        ["powershell", "-Command", ps_script],
+        check=True
+    )
+
+    print(
+        f"SCREENSHOT SAVED: {path}"
+    )
+
+    return path
+
+
 def execute(intent):
 
     print(
@@ -111,10 +105,6 @@ def execute(intent):
 
         print(
             f"COMMAND: {intent['command']}"
-        )
-
-        speak(
-            "assets/opening_application.wav"
         )
 
         subprocess.Popen(
@@ -134,10 +124,6 @@ def execute(intent):
             f"WORKFLOW: {intent['steps']}"
         )
 
-        speak(
-            "assets/opening_application.wav"
-        )
-
         _run_workflow(
             intent["steps"]
         )
@@ -145,44 +131,18 @@ def execute(intent):
         return "Workflow completed"
 
     #
-    # Time
+    # Marker commands handled in Python
     #
 
-    if name == "time":
+    if name == "marker":
 
-        now = datetime.datetime.now()
+        marker = intent.get("marker", "")
 
-        time_text = now.strftime(
-            "%I %M %p"
-        ).lstrip("0")
+        if marker == "__TAKE_SCREENSHOT__":
 
-        _speak_dynamic_time(
-            f"The current time is {time_text}"
-        )
+            path = _take_screenshot()
 
-        return (
-            f"Current time is {time_text}"
-        )
-
-    #
-    # Volume Mute
-    #
-
-    if name == "mute":
-
-        speak(
-            "assets/volume_muted.wav"
-        )
-
-        subprocess.run(
-            [
-                "powershell",
-                "-Command",
-                "(New-Object -ComObject WScript.Shell).SendKeys([char]173)"
-            ]
-        )
-
-        return "Volume muted"
+            return f"Screenshot saved to {path}"
 
     #
     # Exit Assistant
@@ -190,18 +150,10 @@ def execute(intent):
 
     if name == "exit":
 
-        speak(
-            "assets/exiting_assistant.wav"
-        )
-
         return "__EXIT__"
 
     #
     # Unknown
     #
-
-    speak(
-        "assets/unknown_command.wav"
-    )
 
     return "Unknown command"

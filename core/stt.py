@@ -1,21 +1,26 @@
-# Version: v1.0
+# Version: v1.1.0
 
 import subprocess
 
 
 def transcribe(
-    whisper_exe,
-    model,
+    parakeet_exe,
+    parakeet_model,
+    parakeet_vad_model,
     wav_file
 ):
 
     result = subprocess.run(
         [
-            whisper_exe,
-            "-m",
-            model,
-            "-f",
-            wav_file
+            parakeet_exe,
+            "transcribe",
+            "--model",
+            parakeet_model,
+            "--input",
+            wav_file,
+            "--vad",
+            "--vad-model",
+            parakeet_vad_model
         ],
         capture_output=True,
         text=True,

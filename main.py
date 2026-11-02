@@ -1,4 +1,4 @@
-# Version: v1.2.1
+# Version: v1.3.0
 
 import json
 import threading
@@ -12,7 +12,7 @@ from core.stt import transcribe
 from core.intent import detect_intent
 from core.actions import execute
 from core.notifier import notify
-from core.tts import speak
+from core.tts import speak, speak_text
 
 import keyboard
 
@@ -67,13 +67,14 @@ def run_voice_request():
         tray.set_idle()
 
     text = transcribe(
-        CONFIG["whisper_exe"],
-        CONFIG["whisper_model"],
+        CONFIG["parakeet_exe"],
+        CONFIG["parakeet_model"],
+        CONFIG["parakeet_vad_model"],
         "recordings/temp.wav"
     )
 
     print(
-        f"WHISPER TEXT: [{text}]"
+        f"PARAKEET TEXT: [{text}]"
     )
 
     intent = detect_intent(
@@ -94,9 +95,17 @@ def run_voice_request():
 
     if response == "__EXIT__":
 
+        speak(
+            "assets/exiting_assistant.wav"
+        )
+
         shutdown_assistant()
 
         return
+
+    if CONFIG.get("speak_responses", False):
+
+        speak_text(response)
 
     notify(response)
 

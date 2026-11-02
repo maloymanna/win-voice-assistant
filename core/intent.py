@@ -1,4 +1,4 @@
-# Version: v1.3.0
+# Version: v1.4.0
 
 import re
 import yaml
@@ -13,25 +13,10 @@ with open(
     CONFIG = yaml.safe_load(f)
 
 
-COMMANDS = CONFIG.get(
-    "commands",
-    {}
-)
-
-WORKFLOWS = CONFIG.get(
-    "workflows",
-    {}
-)
-
-EXIT = CONFIG.get(
-    "exit",
-    {}
-)
-
-ALIASES = CONFIG.get(
-    "aliases",
-    {}
-)
+COMMANDS = CONFIG.get("commands", {})
+WORKFLOWS = CONFIG.get("workflows", {})
+EXIT = CONFIG.get("exit", {})
+ALIASES = CONFIG.get("aliases", {})
 
 
 REQUIRED_SECTIONS = [
@@ -48,6 +33,12 @@ for section in REQUIRED_SECTIONS:
         raise RuntimeError(
             f"commands.yaml missing section: {section}"
         )
+
+
+# Marker commands handled by actions.py, not by shell
+PYTHON_MARKERS = {
+    "take screenshot": "__TAKE_SCREENSHOT__",
+}
 
 
 def _normalize(text):
@@ -136,7 +127,26 @@ def detect_intent(text):
         return result
 
     #
-    # Command
+    # Python-handled marker commands
+    #
+
+    if text in PYTHON_MARKERS:
+
+        result = {
+            "intent": "marker",
+            "name": text,
+            "marker": PYTHON_MARKERS[text],
+            "spoken_text": text
+        }
+
+        print(
+            f"MATCHED INTENT: {result}"
+        )
+
+        return result
+
+    #
+    # Shell command
     #
 
     if text in COMMANDS:
@@ -154,20 +164,36 @@ def detect_intent(text):
         return result
 
     #
-    # Built-ins
+    # "search web <query>"
     #
 
-    if text == "what time is it":
+    if text.startswith("search web "):
 
-        return {
-            "intent": "time"
-        }
+        query = text[len("search web "):].strip()
 
-    if text == "mute volume":
+        if query:
 
-        return {
-            "intent": "mute"
-        }
+            with open(
+                "config/commands.yaml",
+                "r",
+                encoding="utf-8"
+            ) as f:
+
+                raw = yaml.safe_load(f)
+
+            base = raw["commands"]["search web"]
+
+            result = {
+                "intent": "command",
+                "name": "search web",
+                "command": base + query
+            }
+
+            print(
+                f"MATCHED INTENT: {result}"
+            )
+
+            return result
 
     print(
         f"NO MATCH FOUND: [{text}]"
