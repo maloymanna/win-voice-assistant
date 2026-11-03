@@ -1,4 +1,6 @@
 {
+  "stt_engine": "parakeet",
+
   "whisper_exe": "C:/Tools/whisper/whisper-cli.exe",
   "whisper_model": "C:/Tools/whisper/models/ggml-base.en.bin",
 
@@ -7,8 +9,9 @@
   "parakeet_vad_model": "C:/Tools/parakeet/models/silero-vad-f16.gguf",
 
   "piper_exe": "C:/Tools/piper/piper.exe",
-  "piper_model": "C:/Tools/piper/en_US-lessac-medium.onnx",
+  "piper_model": "C:/Tools/piper/voices/en_US-lessac-medium.onnx",
 
   "record_seconds": 5,
-  "speak_responses": true
+  "speak_responses": true,
+  "screenshot_dir": "C:/Users/myuser/Pictures"
 }

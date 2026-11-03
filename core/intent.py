@@ -1,5 +1,6 @@
-# Version: v1.5.0
+# Version: v1.6.0
 
+import os
 import re
 import urllib.parse
 
@@ -16,6 +17,7 @@ with open(
 
 
 COMMANDS = CONFIG.get("commands", {})
+SCRIPTS = CONFIG.get("scripts", {})
 CLOSE = CONFIG.get("close", {})
 WORKFLOWS = CONFIG.get("workflows", {})
 EXIT = CONFIG.get("exit", {})
@@ -25,6 +27,7 @@ SEARCH_PREFIXES = ["search web"] + CONFIG.get("search_prefixes", [])
 
 REQUIRED_SECTIONS = [
     "commands",
+    "scripts",
     "close",
     "aliases",
     "workflows",
@@ -100,6 +103,32 @@ def _build_search_intent(query):
     }
 
 
+def _script_launch_argv(script_path):
+
+    ext = os.path.splitext(script_path)[1].lower()
+
+    if ext == ".ps1":
+
+        return [
+            "powershell",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-NoProfile",
+            "-File",
+            script_path
+        ]
+
+    if ext == ".py":
+
+        import sys
+
+        return [sys.executable, script_path]
+
+    raise ValueError(
+        f"Unsupported script extension: {ext} ({script_path})"
+    )
+
+
 def detect_intent(text):
 
     text = _normalize(text)
@@ -166,7 +195,7 @@ def detect_intent(text):
         return result
 
     #
-    # Exact shell command
+    # Exact shell command (precedence over scripts)
     #
 
     if text in COMMANDS:
@@ -175,6 +204,27 @@ def detect_intent(text):
             "intent": "command",
             "name": text,
             "command": COMMANDS[text]
+        }
+
+        print(
+            f"MATCHED INTENT: {result}"
+        )
+
+        return result
+
+    #
+    # Script
+    #
+
+    if text in SCRIPTS:
+
+        script_path = SCRIPTS[text]
+
+        result = {
+            "intent": "script",
+            "name": text,
+            "script": script_path,
+            "argv": _script_launch_argv(script_path)
         }
 
         print(

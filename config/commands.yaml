@@ -25,6 +25,15 @@ commands:
   take screenshot: '__TAKE_SCREENSHOT__'
 
 
+scripts:
+
+  vpn: 'c:/users/myuser/scripts/togglevpn.ps1'
+
+  backup: 'c:/users/myuser/scripts/backup.py'
+
+  clean-temp: 'c:/users/myuser/scripts/clean_temp.ps1'
+
+
 close:
 
   close edge: 'msedge.exe'
@@ -99,6 +108,15 @@ aliases:
 
   quit notepad: close notepad
   exit notepad: close notepad
+
+  toggle vpn: vpn
+  connect vpn: vpn
+  disconnect vpn: vpn
+
+  start backup: backup
+  run backup: backup
+
+  clean temp: clean-temp
 
   quit: exit
   shutdown assistant: exit

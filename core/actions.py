@@ -1,5 +1,5 @@
 # core/actions.py
-# Version: v1.5.0
+# Version: v1.6.0
 
 import subprocess
 import datetime
@@ -160,6 +160,24 @@ def execute(intent):
 
         subprocess.Popen(
             intent["command"],
+            shell=False,
+            creationflags=subprocess.CREATE_NO_WINDOW
+        )
+
+        return "Command executed"
+
+    #
+    # Script launch (fire-and-forget)
+    #
+
+    if name == "script":
+
+        print(
+            f"SCRIPT: {intent['script']}"
+        )
+
+        subprocess.Popen(
+            intent["argv"],
             shell=False,
             creationflags=subprocess.CREATE_NO_WINDOW
         )

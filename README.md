@@ -111,6 +111,13 @@ To install:
 - whisper_exe / whisper_model — retained for future control-word use; not currently called
 - stt_engine — "parakeet" or "whisper" — selects which STT backend core/stt.py uses
 - screenshot_dir — e.g. C:/Users/myuser/Pictures — directory where screenshots are saved
+- scripts: — new top-level section for launching .ps1 and .py scripts. Each entry maps a voice key to a script path. Interpreter is chosen by extension:
+```text
+    .ps1 → powershell.exe -ExecutionPolicy Bypass -NoProfile -File <script>
+    .py → sys.executable <script> (the same Python that runs main.py, so your venv is honoured)
+```
+Scripts are launched fire-and-forget: execute() returns "Command executed" immediately, without waiting for the script to finish. Long-running scripts (VPN toggles, backups, cleanups) are safe. No console window is shown.
+If a key exists in both commands: and scripts:, commands: wins.
 
 ## Commands Reference (config/commands.yaml)
 
