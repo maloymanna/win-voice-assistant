@@ -20,13 +20,29 @@ commands:
 
   open documents: 'explorer.exe shell:Personal'
 
-  focus on: 'powershell -Command "Set-ItemProperty -Path HKCU:\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings -Name NOC_GLOBAL_SETTING_TOASTS_ENABLED -Value 0"'
-
-  focus off: 'powershell -Command "Set-ItemProperty -Path HKCU:\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings -Name NOC_GLOBAL_SETTING_TOASTS_ENABLED -Value 1"'
-
   search web: '"C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe" https://www.google.com/search?q='
 
   take screenshot: '__TAKE_SCREENSHOT__'
+
+
+close:
+
+  close edge: 'msedge.exe'
+
+  close excel: 'EXCEL.EXE'
+
+  close notepad: 'notepad.exe'
+
+  close calculator: 'calc.exe'
+
+  close explorer: 'explorer.exe'
+
+
+search_prefixes:
+
+  - google
+  - search
+  - search the web
 
 
 workflows:
@@ -72,17 +88,17 @@ aliases:
   open my documents: open documents
   show documents: open documents
 
-  do not disturb: focus on
-  enable focus: focus on
-  disable focus: focus off
-  turn on focus: focus on
-  turn off focus: focus off
-
-  search the web: search web
-  google: search web
-
   screenshot: take screenshot
   capture screen: take screenshot
+
+  quit edge: close edge
+  exit edge: close edge
+
+  quit excel: close excel
+  exit excel: close excel
+
+  quit notepad: close notepad
+  exit notepad: close notepad
 
   quit: exit
   shutdown assistant: exit

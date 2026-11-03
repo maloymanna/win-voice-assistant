@@ -1,6 +1,8 @@
-# Version: v1.4.0
+# Version: v1.5.0
 
 import re
+import urllib.parse
+
 import yaml
 
 
@@ -14,13 +16,16 @@ with open(
 
 
 COMMANDS = CONFIG.get("commands", {})
+CLOSE = CONFIG.get("close", {})
 WORKFLOWS = CONFIG.get("workflows", {})
 EXIT = CONFIG.get("exit", {})
 ALIASES = CONFIG.get("aliases", {})
+SEARCH_PREFIXES = ["search web"] + CONFIG.get("search_prefixes", [])
 
 
 REQUIRED_SECTIONS = [
     "commands",
+    "close",
     "aliases",
     "workflows",
     "exit"
@@ -35,7 +40,6 @@ for section in REQUIRED_SECTIONS:
         )
 
 
-# Marker commands handled by actions.py, not by shell
 PYTHON_MARKERS = {
     "take screenshot": "__TAKE_SCREENSHOT__",
 }
@@ -78,6 +82,22 @@ def _resolve_alias(text):
         text,
         text
     )
+
+
+def _build_search_intent(query):
+
+    encoded = urllib.parse.quote(
+        query,
+        safe=""
+    )
+
+    base = COMMANDS["search web"]
+
+    return {
+        "intent": "command",
+        "name": "search web",
+        "command": base + encoded
+    }
 
 
 def detect_intent(text):
@@ -146,7 +166,7 @@ def detect_intent(text):
         return result
 
     #
-    # Shell command
+    # Exact shell command
     #
 
     if text in COMMANDS:
@@ -164,30 +184,44 @@ def detect_intent(text):
         return result
 
     #
-    # "search web <query>"
+    # Close application
     #
 
-    if text.startswith("search web "):
+    if text in CLOSE:
 
-        query = text[len("search web "):].strip()
+        result = {
+            "intent": "close",
+            "name": text,
+            "process": CLOSE[text]
+        }
 
-        if query:
+        print(
+            f"MATCHED INTENT: {result}"
+        )
 
-            with open(
-                "config/commands.yaml",
-                "r",
-                encoding="utf-8"
-            ) as f:
+        return result
 
-                raw = yaml.safe_load(f)
+    #
+    # Search prefixes (search web / google / search / search the web)
+    #
 
-            base = raw["commands"]["search web"]
+    for prefix in SEARCH_PREFIXES:
 
-            result = {
-                "intent": "command",
-                "name": "search web",
-                "command": base + query
-            }
+        if text == prefix:
+
+            result = _build_search_intent("")
+
+            print(
+                f"MATCHED INTENT: {result}"
+            )
+
+            return result
+
+        if text.startswith(prefix + " "):
+
+            query = text[len(prefix):].strip()
+
+            result = _build_search_intent(query)
 
             print(
                 f"MATCHED INTENT: {result}"

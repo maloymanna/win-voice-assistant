@@ -1,64 +1,53 @@
-# Version: v1.2.0
+# Version: v1.1.0
 
-from PySide6.QtWidgets import (
-    QSystemTrayIcon,
-    QMenu,
-    QApplication
-)
-
-from PySide6.QtGui import (
-    QAction,
-    QIcon
-)
+from PySide6.QtCore import Signal
+from PySide6.QtGui import QAction, QIcon
+from PySide6.QtWidgets import QMenu, QSystemTrayIcon
 
 
 class AssistantTray:
 
-    def __init__(
-        self,
-        idle_icon,
-        listening_icon
-    ):
+    exit_requested = Signal()
 
-        self.idle_icon = QIcon(
-            idle_icon
-        )
+    def __init__(self, idle_icon, listening_icon):
 
-        self.listening_icon = QIcon(
-            listening_icon
-        )
+        self.idle_icon_path = idle_icon
+        self.listening_icon_path = listening_icon
 
         self.tray = QSystemTrayIcon(
-            self.idle_icon
+            QIcon(self.idle_icon_path)
         )
 
-        menu = QMenu()
+        self.tray.setToolTip("Voice Assistant")
 
-        exit_action = QAction("Exit")
+        #
+        # Context menu (keep references as instance attributes
+        # so Python does not garbage-collect them)
+        #
 
-        exit_action.triggered.connect(
-            QApplication.instance().quit
+        self.menu = QMenu()
+
+        self.exit_action = QAction("Exit", self.menu)
+
+        self.exit_action.triggered.connect(
+            self._request_exit
         )
 
-        menu.addAction(
-            exit_action
-        )
+        self.menu.addAction(self.exit_action)
 
-        self.tray.setContextMenu(
-            menu
-        )
+        self.tray.setContextMenu(self.menu)
+
+    def _request_exit(self):
+
+        self.exit_requested.emit()
 
     def set_idle(self):
 
-        self.tray.setIcon(
-            self.idle_icon
-        )
+        self.tray.setIcon(QIcon(self.idle_icon_path))
 
     def set_listening(self):
 
-        self.tray.setIcon(
-            self.listening_icon
-        )
+        self.tray.setIcon(QIcon(self.listening_icon_path))
 
     def show(self):
 

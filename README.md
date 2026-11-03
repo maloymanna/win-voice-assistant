@@ -1,6 +1,6 @@
 # Windows Voice Assistant
 
-A local, CPU-only voice assistant for Windows 11. Double-tap **Right Ctrl** to record a voice command. The assistant transcribes it with parakeet.cpp, matches the intent against a flat YAML configuration, executes the action (open apps, navigate Edge, toggle Focus Assist, take a screenshot, etc.), and speaks the response back via Piper TTS.
+A local, CPU-only voice assistant for Windows 11. Double-tap **Right Ctrl** to record a voice command. The assistant transcribes it with parakeet.cpp / whisper.cpp, matches the intent against a flat YAML configuration, executes the action (open apps, navigate Edge, toggle Focus Assist, take a screenshot, etc.), and speaks the response back via Piper TTS.
 
 No cloud services, no GPU, no Python LLM dependency at runtime.
 
@@ -70,11 +70,11 @@ Update config.json:
 
 All already in requirements.txt; listed here for a fresh machine.
 
-### 5. whisper.cpp (retained in config, not called by current STT path)
+### 5. whisper.cpp 
 
-The original whisper_exe / whisper_model keys remain in config.json for compatibility. The STT path now goes through parakeet. If you later add a control-word checker (like the Linux script's overlapping-window pause/resume detection), whisper.cpp would be used there.
+Set "stt_engine": "whisper" in config.json to route transcription through whisper.cpp instead of parakeet.cpp. This was added because parakeet occasionally mishears words; whisper sometimes does better on different accents or phrasing. All other config keys remain valid, so switching back and forth is a one-line edit.
 
-To install anyway:
+To install:
 
     git clone https://github.com/ggerganov/whisper.cpp
     cd whisper.cpp
@@ -109,6 +109,8 @@ To install anyway:
 - record_seconds — e.g. 5 — recording duration (set to 30/300 for longer dictation)
 - speak_responses — true/false — if true, responses are spoken via Piper; if false, only notifications
 - whisper_exe / whisper_model — retained for future control-word use; not currently called
+- stt_engine — "parakeet" or "whisper" — selects which STT backend core/stt.py uses
+- screenshot_dir — e.g. C:/Users/myuser/Pictures — directory where screenshots are saved
 
 ## Commands Reference (config/commands.yaml)
 
@@ -116,8 +118,8 @@ To install anyway:
 
 - open downloads / show downloads — opens shell:Downloads in Explorer
 - open documents / show documents — opens shell:Personal in Explorer
-- focus on / do not disturb / enable focus — sets NOC_GLOBAL_SETTING_TOASTS_ENABLED=0 (Focus Assist ON)
-- focus off / disable focus — sets NOC_GLOBAL_SETTING_TOASTS_ENABLED=1 (Focus Assist OFF)
+- close edge / close excel / close notepad / close calculator / close explorer — terminate the process; close explorer gracefully closes file explorer windows without killing the taskbar or desktop
+- Aliases quit X / exit X for close commands
 - search web query — opens Edge with google.com/search?q=query
 - edge, excel, notepad, calculator, github, youtube, jira, ticket-tool — opens the configured app/URL
 - start work (workflow) — opens Edge, then ticket-tool, then jira
@@ -144,6 +146,10 @@ To add a workflow:
       morning routine:
         - edge
         - my app
+
+## Exiting the assistant
+
+- In addition to saying "exit" / "quit" / "shutdown assistant", you can right-click the system tray icon and select Exit.
 
 ## Troubleshooting
 
@@ -196,7 +202,8 @@ Requires CMake (winget install Kitware.CMake), Git with submodule support, and M
 
 ## License
 
-[MIT](/LICENSE) 
+[MIT](/LICENSE)  
+
 Note: 
 - parakeet.cpp is MIT; GGUF weights derive from NVIDIA NeMo under CC-BY-4.0. 
 - Piper is GPL-3.0 — check license obligations if you redistribute binaries.

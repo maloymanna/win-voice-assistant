@@ -1,4 +1,4 @@
-# Version: v1.3.0
+# Version: v1.4.0
 
 import json
 import threading
@@ -33,6 +33,10 @@ tray = AssistantTray(
     listening_icon="assets/tray_listening.ico"
 )
 
+tray.exit_requested.connect(
+    lambda: shutdown_assistant()
+)
+
 
 def shutdown_assistant():
 
@@ -53,6 +57,10 @@ def run_voice_request():
 
         notify("Listening")
 
+        # Uncomment the next line to play a ding instead of the
+        # spoken "Listening" cue. Comment out the speak() below.
+        # speak("assets/ding.wav")
+
         speak(
             "assets/listening.wav"
         )
@@ -67,14 +75,12 @@ def run_voice_request():
         tray.set_idle()
 
     text = transcribe(
-        CONFIG["parakeet_exe"],
-        CONFIG["parakeet_model"],
-        CONFIG["parakeet_vad_model"],
+        CONFIG,
         "recordings/temp.wav"
     )
 
     print(
-        f"PARAKEET TEXT: [{text}]"
+        f"STT TEXT: [{text}]"
     )
 
     intent = detect_intent(

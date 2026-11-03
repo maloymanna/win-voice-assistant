@@ -1,10 +1,22 @@
 # core/actions.py
-# Version: v1.4.0
+# Version: v1.5.0
 
 import subprocess
 import datetime
+import json
 import os
 import yaml
+
+
+def _load_config():
+
+    with open(
+        "config/config.json",
+        "r",
+        encoding="utf-8"
+    ) as f:
+
+        return json.load(f)
 
 
 def _load_yaml():
@@ -37,7 +49,8 @@ def _run_workflow(workflow_steps):
 
             subprocess.Popen(
                 commands[step],
-                shell=True
+                shell=False,
+                creationflags=subprocess.CREATE_NO_WINDOW
             )
 
         else:
@@ -49,22 +62,24 @@ def _run_workflow(workflow_steps):
 
 def _take_screenshot():
 
+    config = _load_config()
+
     ts = datetime.datetime.now().strftime(
         "%Y%m%d_%H%M%S"
     )
 
-    pictures = os.path.join(
-        os.path.expanduser("~"),
-        "Pictures"
+    target_dir = config.get(
+        "screenshot_dir",
+        os.path.join(os.path.expanduser("~"), "Pictures")
     )
 
     os.makedirs(
-        pictures,
+        target_dir,
         exist_ok=True
     )
 
     path = os.path.join(
-        pictures,
+        target_dir,
         f"Screenshot_{ts}.png"
     )
 
@@ -79,7 +94,10 @@ def _take_screenshot():
 
     subprocess.run(
         ["powershell", "-Command", ps_script],
-        check=True
+        shell=False,
+        creationflags=subprocess.CREATE_NO_WINDOW,
+        check=True,
+        capture_output=True
     )
 
     print(
@@ -87,6 +105,39 @@ def _take_screenshot():
     )
 
     return path
+
+
+def _close_process(process):
+
+    if process.lower() == "explorer.exe":
+
+        # Close only file explorer windows, keep taskbar and desktop
+        subprocess.run(
+            [
+                "powershell",
+                "-Command",
+                "(New-Object -ComObject Shell.Application)"
+                ".Windows() | ForEach-Object { $_.Quit() }"
+            ],
+            shell=False,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+            capture_output=True
+        )
+
+        return "Closed Explorer windows"
+
+    result = subprocess.run(
+        ["taskkill", "/f", "/im", process],
+        shell=False,
+        creationflags=subprocess.CREATE_NO_WINDOW,
+        capture_output=True
+    )
+
+    if result.returncode == 0:
+
+        return f"Closed {process}"
+
+    return f"Process not running: {process}"
 
 
 def execute(intent):
@@ -109,10 +160,21 @@ def execute(intent):
 
         subprocess.Popen(
             intent["command"],
-            shell=True
+            shell=False,
+            creationflags=subprocess.CREATE_NO_WINDOW
         )
 
         return "Command executed"
+
+    #
+    # Close application
+    #
+
+    if name == "close":
+
+        return _close_process(
+            intent["process"]
+        )
 
     #
     # Workflow
