@@ -1,9 +1,10 @@
-# Version: v1.5.0
+# Version: v1.6.0
 
 import json
-import queue
+import subprocess
 import threading
 import time
+import wave
 
 import numpy as np
 import sounddevice as sd
@@ -15,8 +16,7 @@ from core.stt import transcribe
 from core.intent import detect_intent
 from core.actions import execute
 from core.notifier import notify
-from core.tts import speak, speak_text
-from core.streaming_vad import StreamingVAD
+from core.tts import speak, play_ding, speak_text
 
 import keyboard
 
@@ -33,8 +33,7 @@ with open(
 MODE = CONFIG.get("mode", "command")
 
 SAMPLE_RATE = 16000
-FRAME_SAMPLES = 512          # 32 ms at 16 kHz
-FRAME_BYTES = FRAME_SAMPLES * 2   # int16
+BLOCKSIZE = 512          # 32 ms at 16 kHz
 
 
 app = QApplication([])
@@ -49,188 +48,195 @@ tray.exit_requested.connect(
 )
 
 
-# ---------------------------------------------------------------- hotkey state
+# ------------------------------------------------------- stt-mode state
 
-recording_active = False
-stop_requested = False
-_hotkey_lock = threading.Lock()
-
-
-def request_stop():
-
-    global stop_requested
-
-    with _hotkey_lock:
-        stop_requested = True
+_stt_lock = threading.Lock()
+_stt_recording = False
+_stt_chunks = []
+_stt_stream = None
+_stt_safety_timer = None
 
 
-# ---------------------------------------------------------------- streaming stt
+def _stt_audio_callback(indata, frames, time_info, status):
 
-def _record_streaming_stt():
+    if _stt_recording:
 
-    """
-    Returns a path to a WAV file with the captured audio.
-    Uses streaming VAD to stop automatically on silence,
-    or on hotkey toggle.
-    """
+        _stt_chunks.append(indata.copy())
 
-    global recording_active, stop_requested
 
-    vad = StreamingVAD(
-        CONFIG.get("parakeet_lib", ""),
-        CONFIG["parakeet_vad_model"]
-    )
+def _stt_ensure_stream():
 
-    vad.set_min_pause(
-        CONFIG.get("vad_min_pause", 0.1)
-    )
+    global _stt_stream
 
-    max_seconds = CONFIG.get(
-        "record_seconds_stt_max", 120
-    )
+    if _stt_stream is None:
 
-    audio_queue = queue.Queue()
-
-    def _callback(indata, frames, time_info, status):
-        # Keep the callback light: copy and enqueue only.
-        audio_queue.put(indata.copy())
-
-    collected = []
-    speech_started = False
-    start_time = time.time()
-
-    try:
-
-        with sd.InputStream(
+        _stt_stream = sd.InputStream(
             samplerate=SAMPLE_RATE,
             channels=1,
             dtype="int16",
-            blocksize=FRAME_SAMPLES,
-            callback=_callback
-        ):
+            blocksize=BLOCKSIZE,
+            callback=_stt_audio_callback
+        )
 
-            print("STREAMING STT: listening")
+        _stt_stream.start()
 
-            while True:
-
-                if stop_requested:
-                    print("STREAMING STT: hotkey stop")
-                    break
-
-                if time.time() - start_time > max_seconds:
-                    print("STREAMING STT: max duration reached")
-                    break
-
-                try:
-                    chunk = audio_queue.get(timeout=0.1)
-                except queue.Empty:
-                    continue
-
-                collected.append(chunk)
-
-                started, ended = vad.feed(
-                    chunk.tobytes()
-                )
-
-                if started:
-                    speech_started = True
-
-                if ended and speech_started:
-                    print("STREAMING STT: silence stop")
-                    break
-
-    except Exception as e:
-
-        print(f"STREAMING STT FAILED: {e}")
-        return None
-
-    finally:
-
-        vad.close()
-
-        with _hotkey_lock:
-            recording_active = False
-            stop_requested = False
-
-    if not collected:
-        return None
-
-    audio = np.concatenate(collected, axis=0)
-
-    # Write a minimal 16 kHz mono int16 WAV
-    import wave
-
-    path = "recordings/temp_stt.wav"
-
-    with wave.open(path, "wb") as wf:
-        wf.setnchannels(1)
-        wf.setsampwidth(2)
-        wf.setframerate(SAMPLE_RATE)
-        wf.writeframes(audio.tobytes())
-
-    return path
+        print("STT: audio stream opened")
 
 
-# ---------------------------------------------------------------- stt mode flow
+def _stt_safety_stop():
 
-def _run_stt_mode():
+    print("STT: safety max duration reached")
 
-    global recording_active, stop_requested
+    _stt_stop_and_transcribe()
 
-    with _hotkey_lock:
-        recording_active = True
-        stop_requested = False
+
+def _stt_start():
+
+    global _stt_recording, _stt_chunks, _stt_safety_timer
 
     try:
 
-        tray.set_listening()
-        notify("Listening")
+        _stt_ensure_stream()
 
-        try:
-            speak("assets/listening.wav")
-        except Exception:
-            pass
+    except Exception as e:
 
-        wav_path = _record_streaming_stt()
+        print(f"STT: microphone unavailable: {e}")
 
-    finally:
+        play_ding("negative_ding")
+
+        notify(f"Microphone unavailable: {e}")
 
         tray.set_idle()
 
-        with _hotkey_lock:
-            recording_active = False
-            stop_requested = False
-
-    if not wav_path:
-        notify("No speech detected")
         return
 
-    text = transcribe(CONFIG, wav_path)
+    with _stt_lock:
+
+        _stt_chunks = []
+
+        _stt_recording = True
+
+        max_sec = CONFIG.get(
+            "record_seconds_stt_max", 120
+        )
+
+        _stt_safety_timer = threading.Timer(
+            max_sec,
+            _stt_safety_stop
+        )
+
+        _stt_safety_timer.daemon = True
+
+        _stt_safety_timer.start()
+
+    print("STT: recording started")
+
+
+def _stt_stop_and_transcribe():
+
+    global _stt_recording, _stt_chunks, _stt_safety_timer
+
+    with _stt_lock:
+
+        if not _stt_recording:
+
+            return
+
+        _stt_recording = False
+
+        chunks = _stt_chunks
+
+        _stt_chunks = []
+
+        if _stt_safety_timer is not None:
+
+            _stt_safety_timer.cancel()
+
+            _stt_safety_timer = None
+
+    tray.set_idle()
+
+    if not chunks:
+
+        print("STT: no audio captured")
+
+        play_ding("negative_ding")
+
+        notify("No speech detected")
+
+        return
+
+    audio = np.concatenate(chunks, axis=0)
+
+    duration = len(audio) / SAMPLE_RATE
+
+    print(
+        f"STT: recording stopped ({duration:.1f}s)"
+    )
+
+    wav_path = "recordings/temp_stt.wav"
+
+    with wave.open(wav_path, "wb") as wf:
+
+        wf.setnchannels(1)
+
+        wf.setsampwidth(2)
+
+        wf.setframerate(SAMPLE_RATE)
+
+        wf.writeframes(audio.tobytes())
+
+    try:
+
+        text = transcribe(CONFIG, wav_path)
+
+    except Exception as e:
+
+        print(f"STT: transcribe failed: {e}")
+
+        play_ding("negative_ding")
+
+        notify(f"Transcription failed: {e}")
+
+        return
 
     print(f"STT TEXT: [{text}]")
 
-    if text.strip():
+    if not text.strip():
 
-        try:
-            import subprocess
-            subprocess.run(
-                ["clip"],
-                input=text,
-                text=True,
-                shell=False,
-                creationflags=subprocess.CREATE_NO_WINDOW
-            )
-        except Exception as e:
-            print(f"CLIPBOARD WRITE FAILED: {e}")
-
-        notify(text)
-
-    else:
+        play_ding("negative_ding")
 
         notify("No speech detected")
 
+        return
 
-# ---------------------------------------------------------------- command mode
+    try:
+
+        subprocess.run(
+            ["clip"],
+            input=text,
+            text=True,
+            shell=False,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+            check=True
+        )
+
+    except Exception as e:
+
+        print(f"STT: clipboard write failed: {e}")
+
+        play_ding("negative_ding")
+
+        notify(f"Clipboard failed: {e}")
+
+        return
+
+    play_ding("positive_ding")
+
+    notify(text)
+
+
+# ------------------------------------------------------- command mode flow
 
 def run_voice_request():
 
@@ -297,18 +303,30 @@ def run_voice_request():
     notify(response)
 
 
-# ---------------------------------------------------------------- tray / exit
+# ------------------------------------------------------- lifecycle
 
 def shutdown_assistant():
 
     print("SHUTDOWN REQUESTED")
+
+    global _stt_stream
+
+    if _stt_stream is not None:
+
+        try:
+            _stt_stream.stop()
+            _stt_stream.close()
+        except Exception:
+            pass
+
+        _stt_stream = None
 
     tray.tray.hide()
 
     app.quit()
 
 
-# ---------------------------------------------------------------- hotkey
+# ------------------------------------------------------- hotkey
 
 DOUBLE_TAP_WINDOW = 0.45
 
@@ -317,29 +335,43 @@ last_right_ctrl = 0
 
 def right_ctrl_pressed(event):
 
-    global last_right_ctrl, recording_active
+    global last_right_ctrl
 
     now = time.time()
 
     if now - last_right_ctrl > DOUBLE_TAP_WINDOW:
 
         last_right_ctrl = now
+
         return
 
     last_right_ctrl = 0
 
     if MODE == "stt":
 
-        with _hotkey_lock:
+        with _stt_lock:
 
-            if recording_active:
-                request_stop()
-                return
+            is_recording = _stt_recording
 
-        threading.Thread(
-            target=_run_stt_mode,
-            daemon=True
-        ).start()
+        if is_recording:
+
+            threading.Thread(
+                target=_stt_stop_and_transcribe,
+                daemon=True
+            ).start()
+
+        else:
+
+            tray.set_listening()
+
+            notify("Listening")
+
+            try:
+                speak("assets/listening.wav")
+            except Exception as e:
+                print(f"LISTENING CUE FAILED: {e}")
+
+            _stt_start()
 
         return
 

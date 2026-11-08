@@ -1,4 +1,4 @@
-# Version: v1.1.0
+# Version: v1.2.0
 
 import json
 import os
@@ -21,6 +21,21 @@ def speak(wav_file):
     )
 
     sd.wait()
+
+
+def play_ding(name):
+
+    path = f"assets/{name}.wav"
+
+    try:
+
+        speak(path)
+
+    except Exception as e:
+
+        print(
+            f"DING PLAY FAILED: {path} ({e})"
+        )
 
 
 def speak_text(text):

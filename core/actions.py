@@ -1,11 +1,13 @@
 # core/actions.py
-# Version: v1.6.0
+# Version: v1.7.0
 
 import subprocess
 import datetime
 import json
 import os
 import yaml
+
+from core.tts import play_ding
 
 
 def _load_config():
@@ -233,7 +235,9 @@ def execute(intent):
         return "__EXIT__"
 
     #
-    # Unknown
+    # Unknown — negative ding first, then normal response flow
     #
+
+    play_ding("negative_ding")
 
     return "Unknown command"

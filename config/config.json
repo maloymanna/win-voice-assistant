@@ -7,14 +7,12 @@
 
   "parakeet_exe": "C:/Tools/parakeet/parakeet-cli.exe",
   "parakeet_model": "C:/Tools/parakeet/models/tdt_ctc-110m-q8_0.gguf",
-  "parakeet_vad_model": "C:/Tools/parakeet/models/silero-vad-f16.gguf",
   "parakeet_lib": "C:/Tools/parakeet/libparakeet.dll",
 
   "piper_exe": "C:/Tools/piper/piper.exe",
   "piper_model": "C:/Tools/piper/voices/en_US-lessac-medium.onnx",
 
   "record_seconds": 5,
-  "vad_min_pause": 0.1,
   "record_seconds_stt_max": 120,
   "speak_responses": true,
   "screenshot_dir": "C:/Users/myuser/Pictures"
