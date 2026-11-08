@@ -1,5 +1,5 @@
 # core/actions.py
-# Version: v1.7.0
+# Version: v1.8.0
 
 import subprocess
 import datetime
@@ -7,7 +7,7 @@ import json
 import os
 import yaml
 
-from core.tts import play_ding
+from core.tts import speak, play_ding
 
 
 def _load_config():
@@ -142,7 +142,7 @@ def _close_process(process):
     return f"Process not running: {process}"
 
 
-def execute(intent):
+def execute(intent, speak_responses=True):
 
     print(
         f"ACTION_INTENT: {intent}"
@@ -166,7 +166,12 @@ def execute(intent):
             creationflags=subprocess.CREATE_NO_WINDOW
         )
 
-        return "Command executed"
+        if speak_responses:
+            speak("assets/command_executed.wav")
+        else:
+            play_ding("positive_ding")
+
+        return None
 
     #
     # Script launch (fire-and-forget)
@@ -184,7 +189,12 @@ def execute(intent):
             creationflags=subprocess.CREATE_NO_WINDOW
         )
 
-        return "Command executed"
+        if speak_responses:
+            speak("assets/command_executed.wav")
+        else:
+            play_ding("positive_ding")
+
+        return None
 
     #
     # Close application
@@ -192,9 +202,16 @@ def execute(intent):
 
     if name == "close":
 
-        return _close_process(
+        response = _close_process(
             intent["process"]
         )
+
+        if speak_responses:
+            return response
+
+        play_ding("close_or_exit")
+
+        return None
 
     #
     # Workflow
@@ -210,7 +227,12 @@ def execute(intent):
             intent["steps"]
         )
 
-        return "Workflow completed"
+        if speak_responses:
+            speak("assets/workflow_completed.wav")
+        else:
+            play_ding("positive_ding")
+
+        return None
 
     #
     # Marker commands handled in Python
@@ -224,7 +246,16 @@ def execute(intent):
 
             path = _take_screenshot()
 
-            return f"Screenshot saved to {path}"
+            print(
+                f"SCREENSHOT PATH: {path}"
+            )
+
+            if speak_responses:
+                speak("assets/screenshot_saved.wav")
+            else:
+                play_ding("camera_shutter")
+
+            return None
 
     #
     # Exit Assistant
@@ -235,9 +266,12 @@ def execute(intent):
         return "__EXIT__"
 
     #
-    # Unknown — negative ding first, then normal response flow
+    # Unknown
     #
 
     play_ding("negative_ding")
 
-    return "Unknown command"
+    if speak_responses:
+        speak("assets/unknown_command.wav")
+
+    return None

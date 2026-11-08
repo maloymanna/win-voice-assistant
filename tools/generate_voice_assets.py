@@ -1,4 +1,4 @@
-# Version: v1.4.0
+# Version: v1.6.0
 
 import json
 import subprocess
@@ -20,8 +20,20 @@ SPOKEN_OUTPUTS = {
     "assets/listening.wav":
         "Listening",
 
+    "assets/command_executed.wav":
+        "Command executed",
+
+    "assets/workflow_completed.wav":
+        "Workflow completed",
+
+    "assets/unknown_command.wav":
+        "Unknown command",
+
     "assets/exiting_assistant.wav":
         "Exiting assistant",
+
+    "assets/screenshot_saved.wav":
+        "Screenshot saved",
 }
 
 
@@ -30,8 +42,6 @@ Path("assets").mkdir(
     exist_ok=True
 )
 
-
-# ---- spoken assets via Piper ----
 
 for output_file, text in SPOKEN_OUTPUTS.items():
 
@@ -51,10 +61,8 @@ for output_file, text in SPOKEN_OUTPUTS.items():
     print(f"Created: {output_file}")
 
 
-# ---- ding assets, programmatically generated ----
-
-def _generate_ding(path, notes, sample_rate=22050,
-                   amplitude=0.5, fade_ms=5):
+def _generate_two_note(path, notes, sample_rate=22050,
+                       amplitude=0.5, fade_ms=5):
 
     fade_n = int(sample_rate * fade_ms / 1000)
 
@@ -84,26 +92,57 @@ def _generate_ding(path, notes, sample_rate=22050,
     )
 
 
-DINGS = {
-    # ascending two-note chime: success
-    "assets/positive_ding.wav": [
-        (880, 0.08),
-        (1320, 0.12)
-    ],
+def _generate_camera_shutter(path, sample_rate=22050,
+                             duration=0.15, amplitude=0.4):
 
-    # descending two-note chime: error
-    "assets/negative_ding.wav": [
-        (440, 0.12),
-        (330, 0.18)
-    ],
-}
+    n = int(sample_rate * duration)
+
+    rng = np.random.default_rng(seed=42)
+
+    noise = rng.standard_normal(n) * amplitude
+
+    # Fast decay envelope: sharp click burst
+    env = np.exp(-np.linspace(0, 8, n))
+
+    wave = noise * env
+
+    sf.write(
+        path,
+        wave,
+        sample_rate,
+        subtype="PCM_16"
+    )
 
 
-for output_file, notes in DINGS.items():
+_generate_two_note(
+    "assets/positive_ding.wav",
+    [(880, 0.08), (1320, 0.12)]
+)
 
-    _generate_ding(output_file, notes)
+print("Created: assets/positive_ding.wav")
 
-    print(f"Created: {output_file}")
+
+_generate_two_note(
+    "assets/negative_ding.wav",
+    [(440, 0.12), (330, 0.18)]
+)
+
+print("Created: assets/negative_ding.wav")
+
+
+_generate_two_note(
+    "assets/close_or_exit.wav",
+    [(523, 0.10), (392, 0.16)]
+)
+
+print("Created: assets/close_or_exit.wav")
+
+
+_generate_camera_shutter(
+    "assets/camera_shutter.wav"
+)
+
+print("Created: assets/camera_shutter.wav")
 
 
 print("Done.")

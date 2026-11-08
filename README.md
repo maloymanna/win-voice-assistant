@@ -1,22 +1,46 @@
 # Windows Voice Assistant
 
-A local, CPU-only voice assistant for Windows 11. Double-tap **Right Ctrl** to record a voice command. The assistant transcribes it with parakeet.cpp / whisper.cpp, matches the intent against a flat YAML configuration, executes the action (open apps, navigate Edge, toggle Focus Assist, take a screenshot, etc.), and speaks the response back via Piper TTS.
+A local, CPU-only voice assistant for Windows 11. Double-tap **Right Ctrl** to record a voice command. The assistant transcribes it with parakeet.cpp / whisper.cpp, matches the intent against a flat YAML configuration, executes the action (open apps, navigate Edge, toggle Focus Assist, take a screenshot, etc.), and provides audio/visual feedback. 
 
 No cloud services, no GPU, no Python LLM dependency at runtime.
 
 ## Architecture Overview
 
-Right Ctrl (double-tap) -> record_audio() (5s configurable via sounddevice) -> parakeet-cli (--vad --vad-model silero-vad-f16.gguf) -> detect_intent() (commands.yaml: commands / aliases / workflows / exit) -> execute() (subprocess shell or Python marker for screenshot) -> speak_text(response) via Piper TTS (if speak_responses: true) -> notify(response) Windows toast notification.
+Two modes of operation, selected via mode in config.json:
 
-The tray icon flips between idle and listening. The config.json controls all paths and the record_seconds / speak_responses flags.
+**Command mode** (`mode: "command"`, default):
+
+```
+Right Ctrl (double-tap)
+  -> listening cue
+  -> record for record_seconds
+  -> transcribe (parakeet or whisper)
+  -> detect_intent (commands.yaml)
+  -> execute (shell / script / close / workflow / screenshot)
+  -> spoken or ding feedback
+  -> notification
+```
+
+**STT mode** (`mode: "stt"`):
+
+```
+Right Ctrl (double-tap) -> start streaming capture -> listening cue
+Right Ctrl (double-tap) -> stop capture
+  -> transcribe
+  -> copy to clipboard via clip.exe
+  -> positive ding + notification  (or negative ding on failure)
+```
+
+The tray icon flips between idle and listening. Exit is available from the tray context menu or (in command mode) by voice.
 
 ## Prerequisites
 
-You need Git, a few downloaded binaries/models, and Python dependencies. All commands below assume Git Bash or PowerShell 7 on Windows 11.
+You need Git, downloaded binaries/models, and Python dependencies. Commands below assume Git Bash or PowerShell 7 on Windows 11.
 
 ### 1. parakeet.cpp (pre-built binary with VAD support)
 
 Download the v0.6.1 Windows CPU x64 pre-built package, which includes the standalone Silero VAD API:
+
 ```bash 
 wget https://github.com/mudler/parakeet.cpp/releases/download/v0.6.1/parakeet-v0.6.1-bin-win-cpu-x64.zip
 -O parakeet-v0.6.1.zip
@@ -26,14 +50,14 @@ The binary is at `C:/Tools/parakeet/parakeet-cli.exe`. Verify VAD support is pre
 
 `C:/Tools/parakeet/parakeet-cli.exe transcribe --help`
 
-The output should list `--vad` and `--vad-model`. If those flags are missing, fall back to building from `master` (see Troubleshooting).
+The output should list `--vad` and `--vad-model`. If those flags are missing, build from source (see Troubleshooting).
 
 ### 2. GGUF models
 
-Download both files from the mudler/parakeet-cpp-gguf HuggingFace repo:
+Download both files from the `mudler/parakeet-cpp-gguf` HuggingFace repo:
 
-- tdt_ctc-110m-q8_0.gguf (177.8 MB) — English ASR, hybrid TDT+CTC, WER parity with NeMo
-- silero-vad-f16.gguf (~1.3 MB) — Voice Activity Detection for chunking long audio
+- `tdt_ctc-110m-q8_0.gguf` (177.8 MB) — English ASR, hybrid TDT+CTC, WER parity with NeMo
+- `silero-vad-f16.gguf` (~1.3 MB) — Voice Activity Detection for chunking long audio
 
 ```bash
     mkdir -p C:/Tools/parakeet/models
@@ -49,114 +73,222 @@ Download the official Windows binary from the Rhasspy Piper releases page:
 
     https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_windows_amd64.zip
 
-Unzip to C:/Tools/piper/. The binary is piper.exe.
+Unzip to `C:/Tools/piper/`. The binary is `piper.exe`.
 
-Download the en_US-lessac-medium voice:
+Download the `en_US-lessac-medium` voice:
 
+```
     mkdir -p C:/Tools/piper/voices
     wget https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/lessac/medium/en_US-lessac-medium.onnx \
       -O C:/Tools/piper/voices/en_US-lessac-medium.onnx
     wget https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json \
       -O C:/Tools/piper/voices/en_US-lessac-medium.onnx.json
+```
 
-Update config.json:
+Update `config.json`:
 
+```
     "piper_exe": "C:/Tools/piper/piper.exe",
     "piper_model": "C:/Tools/piper/voices/en_US-lessac-medium.onnx"
+```    
 
 ### 4. Python dependencies
 
-    pip install PySide6 keyboard sounddevice soundfile pyyaml
-
-All already in requirements.txt; listed here for a fresh machine.
+```
+    pip install PySide6 keyboard sounddevice soundfile numpy pyyaml
+```
 
 ### 5. whisper.cpp 
 
-Set "stt_engine": "whisper" in config.json to route transcription through whisper.cpp instead of parakeet.cpp. This was added because parakeet occasionally mishears words; whisper sometimes does better on different accents or phrasing. All other config keys remain valid, so switching back and forth is a one-line edit.
+Set `"stt_engine": "whisper"` in `config.json` to route transcription through whisper.cpp instead of parakeet.cpp. This was added because parakeet occasionally mishears words; whisper sometimes does better on different accents or phrasing. All other config keys remain valid, so switching back and forth is a one-line edit.
 
 To install:
 
+```
     git clone https://github.com/ggerganov/whisper.cpp
     cd whisper.cpp
     cmake -B build
     cmake --build build -j
     wget https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin \
       -O models/ggml-base.en.bin
+```
 
 ## Installation
 
-1. Clone or copy the project into a directory (e.g., C:/Tools/win-voice-assistant/).
-2. Edit config/config.json to match your paths (parakeet binary, GGUF models, Piper binary/model, record_seconds).
+1. Clone or copy the project into a directory (e.g., `C:/Tools/win-voice-assistant/`).
+2. Edit `config/config.json` to match your paths (parakeet, Piper, models, `screenshot_dir`).
 3. Pre-generate voice assets (one-time, or whenever you change the fixed phrases):
 
-       python tools/generate_voice_assets.py
+    `python tools/generate_voice_assets.py`
 
-   This creates assets/listening.wav and assets/exiting_assistant.wav using Piper. These are the only pre-recorded assets; all other responses are synthesized dynamically via speak_text().
+This creates:
+
+- Spoken (Piper): `listening.wav`, `command_executed.wav`, `workflow_completed.wav`, `unknown_command.wav`, `exiting_assistant.wav`, `screenshot_saved.wav`
+- Synthesized: `positive_ding.wav`, `negative_ding.wav`, `close_or_exit.wav`, `camera_shutter.wav`   
 
 4. Run:
 
-       python main.py
+   `python main.py`
 
    The tray icon appears. Double-tap Right Ctrl to issue a voice command.
 
 ## Configuration Reference (config/config.json)
 
-- parakeet_exe — e.g. C:/Tools/parakeet/parakeet-cli.exe — parakeet-cli binary
-- parakeet_model — e.g. .../tdt_ctc-110m-q8_0.gguf — English ASR model
-- parakeet_vad_model — e.g. .../silero-vad-f16.gguf — VAD model for --vad
-- piper_exe — e.g. C:/Tools/piper/piper.exe — Piper TTS binary
-- piper_model — e.g. .../en_US-lessac-medium.onnx — Piper voice
-- record_seconds — e.g. 5 — recording duration (set to 30/300 for longer dictation)
-- speak_responses — true/false — if true, responses are spoken via Piper; if false, only notifications
-- whisper_exe / whisper_model — retained for future control-word use; not currently called
-- stt_engine — "parakeet" or "whisper" — selects which STT backend core/stt.py uses
-- screenshot_dir — e.g. C:/Users/myuser/Pictures — directory where screenshots are saved
-- scripts: — new top-level section for launching .ps1 and .py scripts. Each entry maps a voice key to a script path. Interpreter is chosen by extension:
-```text
-    .ps1 → powershell.exe -ExecutionPolicy Bypass -NoProfile -File <script>
-    .py → sys.executable <script> (the same Python that runs main.py, so your venv is honoured)
+| Key | Example | Description |
+|---|---|---|
+| `mode` | `"command"` / `"stt"` | Operating mode |
+| `stt_engine` | `"parakeet"` / `"whisper"` | Speech-to-text backend |
+| `whisper_exe` | `C:/Tools/whisper/whisper-cli.exe` | Whisper binary (if `stt_engine` is `whisper`) |
+| `whisper_model` | `.../ggml-base.en.bin` | Whisper model |
+| `parakeet_exe` | `C:/Tools/parakeet/parakeet-cli.exe` | parakeet-cli binary |
+| `parakeet_model` | `.../tdt_ctc-110m-q8_0.gguf` | English ASR model |
+| `parakeet_vad_model` | `.../silero-vad-f16.gguf` | Silero VAD model for `--vad` |
+| `piper_exe` | `C:/Tools/piper/piper.exe` | Piper TTS binary |
+| `piper_model` | `.../en_US-lessac-medium.onnx` | Piper voice |
+| `record_seconds` | `5` | Fixed recording duration in command mode |
+| `record_seconds_stt_max` | `120` | Safety cap in STT mode (auto-stop if second hotkey never arrives) |
+| `speak_responses` | `true` / `false` | When true: spoken responses. When false: dings only |
+| `screenshot_dir` | `C:/Users/myuser/Pictures` | Directory where screenshots are saved |
+
+---
+
+## Commands Reference (`config/commands.yaml`)
+
+### Shell commands (`commands:`)
+
+| Spoken phrase | Action |
+|---|---|
+| `edge`, `excel`, `notepad`, `calculator`, `github`, `youtube`, `jira`, `ticket-tool` | Opens the configured app/URL |
+| `open downloads` / `show downloads` | Opens `shell:Downloads` in Explorer |
+| `open documents` / `show documents` | Opens `shell:Personal` in Explorer |
+| `search web <query>` | Opens Edge with a Google search (query is URL-encoded) |
+| `take screenshot` / `screenshot` / `capture screen` | Captures all monitors, saves to `screenshot_dir` |
+| `start work` (workflow) | Opens Edge -> ticket-tool -> jira |
+| `exit` / `quit` / `shutdown assistant` | Exits (voice exit only in command mode) |
+
+
+### Close commands (`close:`)
+
+| Spoken phrase | Action |
+|---|---|
+| `close edge` / `quit edge` | Terminates `msedge.exe` |
+| `close excel` / `quit excel` | Terminates `EXCEL.EXE` |
+| `close notepad` / `quit notepad` | Terminates `notepad.exe` |
+| `close calculator` | Terminates `calc.exe` |
+| `close explorer` | Gracefully closes file explorer windows (keeps taskbar and desktop) |
+
+
+### Scripts (`scripts:`)
+
+Launch `.ps1` or `.py` scripts fire-and-forget:
+
+```yaml
+scripts:
+  vpn: 'c:/users/myuser/scripts/togglevpn.ps1'
+  backup: 'c:/users/myuser/scripts/backup.py'
+
+aliases:
+  toggle vpn: vpn
+  start backup: backup
 ```
-Scripts are launched fire-and-forget: execute() returns "Command executed" immediately, without waiting for the script to finish. Long-running scripts (VPN toggles, backups, cleanups) are safe. No console window is shown.
-If a key exists in both commands: and scripts:, commands: wins.
 
-## Commands Reference (config/commands.yaml)
+- `.ps1` -> `powershell.exe -ExecutionPolicy Bypass -NoProfile -File <script>`
+- `.py` -> `sys.executable <script>` (same Python as `main.py`, so venv honoured)
+- Fire-and-forget: no wait, no exit-code check
+- No console window, no `cmd.exe`, no doskey interference
+- If a key exists in both `commands:` and `scripts:`, `commands:` wins
 
-### Tier 1 (pure shell)
+### Search prefixes (`search_prefixes:`)
 
-- open downloads / show downloads — opens shell:Downloads in Explorer
-- open documents / show documents — opens shell:Personal in Explorer
-- close edge / close excel / close notepad / close calculator / close explorer — terminate the process; close explorer gracefully closes file explorer windows without killing the taskbar or desktop
-- Aliases quit X / exit X for close commands
-- search web query — opens Edge with google.com/search?q=query
-- edge, excel, notepad, calculator, github, youtube, jira, ticket-tool — opens the configured app/URL
-- start work (workflow) — opens Edge, then ticket-tool, then jira
-- exit / quit / shutdown assistant — speaks "Exiting assistant", then quits
+| Prefix | Example -> Result |
+|---|---|
+| `search web` | `search web elon musk` -> `q=elon%20musk` |
+| `google` | `google elon musk` -> `q=elon%20musk` |
+| `search` | `search quantum` -> `q=quantum` |
+| `search the web` | `search the web node js` -> `q=node%20js` |
 
-### Python marker (screenshot)
+Queries are URL-encoded so multi-word phrases stay in a single tab.
 
-- take screenshot / screenshot / capture screen — captures all monitors via PowerShell + System.Drawing, saves to ~/Pictures/Screenshot_timestamp.png, responds with the path
+---
+
+## Modes
+
+### Command mode (`mode: "command"`)
+
+Double-tap Right Ctrl. Records for `record_seconds`, matches intent, executes, provides feedback. Voice "exit" / "quit" shuts down the assistant.
+
+### STT mode (`mode: "stt"`)
+
+Double-tap Right Ctrl to start streaming capture. Double-tap again to stop. The recorded audio is transcribed and copied to the clipboard via `clip.exe`. No intent matching, no spoken response.
+
+- Safety cap: `record_seconds_stt_max` (default `120`) auto-stops if the second hotkey never arrives
+- Microphone opening failure triggers negative ding + notification
+- Clipboard write failure triggers negative ding + notification
+- Empty transcription triggers negative ding + "No speech detected"
+
+The word "exit" is transcribed and copied like any other text; the assistant does not shut down. Use the tray context menu to quit.
+
+---
+
+## Audio Behavior Matrix
+
+| Event | `speak_responses: true` | `speak_responses: false` |
+|---|---|---|
+| Recording starts | `listening.wav` | `ding.wav` |
+| Command / script launched | `command_executed.wav` | `positive_ding.wav` |
+| Workflow launched | `workflow_completed.wav` | `positive_ding.wav` |
+| Close app | speaks `"Closed <proc>"` via Piper | `close_or_exit.wav` |
+| Screenshot | `screenshot_saved.wav` | `camera_shutter.wav` |
+| Exit (voice) | `exiting_assistant.wav` | `close_or_exit.wav` |
+| Unknown command | `negative_ding.wav` -> `unknown_command.wav` | `negative_ding.wav` |
+| STT success | `positive_ding.wav` | `positive_ding.wav` |
+| STT empty / failure | `negative_ding.wav` | `negative_ding.wav` |
+| Tray Exit menu | silent | silent |
+
+All dings and pre-recorded cues are played from disk; no runtime Piper synthesis on the feedback path. Runtime Piper synthesis (`speak_text`) is only used for dynamic responses like `"Closed msedge.exe"` and `"Process not running: notepad.exe"`.
+
+---
 
 ## Adding New Commands
 
 The YAML is intentionally flat. To add a shell command:
 
-    commands:
-      my app: 'C:/Path/To/app.exe'
-    aliases:
-      open my app: my app
+```yaml
+commands:
+  my app: 'C:/Path/To/app.exe'
+aliases:
+  open my app: my app
+```
 
-No Python changes needed — detect_intent matches the alias, execute runs the shell string.
+No Python changes needed.
 
 To add a workflow:
 
-    workflows:
-      morning routine:
-        - edge
-        - my app
+```yaml
+workflows:
+  morning routine:
+    - edge
+    - my app
+```
 
-## Exiting the assistant
+To add a close command:
 
-- In addition to saying "exit" / "quit" / "shutdown assistant", you can right-click the system tray icon and select Exit.
+```yaml
+close:
+  close spotify: 'Spotify.exe'
+```
+
+To add a script:
+
+```yaml
+scripts:
+  my script: 'c:/users/myuser/scripts/my_script.ps1'
+aliases:
+  run my script: my script
+```
+
+---
+
 
 ## Troubleshooting
 
@@ -178,7 +310,7 @@ Requires CMake (winget install Kitware.CMake), Git with submodule support, and M
 ### Piper produces no audio
 
 - Verify piper_exe and piper_model paths in config.json.
-- Test directly: echo "test" | C:/Tools/piper/piper.exe -m C:/Tools/piper/voices/en_US-lessac-medium.onnx -f test.wav
+- Test directly: `echo "test" | C:/Tools/piper/piper.exe -m C:/Tools/piper/voices/en_US-lessac-medium.onnx -f test.wav`
 - Ensure sounddevice / soundfile are installed and your default audio output is set.
 
 ### Screenshot fails
@@ -186,26 +318,46 @@ Requires CMake (winget install Kitware.CMake), Git with submodule support, and M
 - The PowerShell script uses System.Windows.Forms and System.Drawing, which are part of .NET Framework on all Windows 11 installs. If it errors, run the PowerShell snippet manually to see the exception.
 - Multi-monitor setups: VirtualScreen captures all monitors. File size will be larger.
 
-### Focus Assist toggle has no effect
-
-- The registry value NOC_GLOBAL_SETTING_TOASTS_ENABLED lives under HKCU, no admin required.
-- Some Windows 11 builds (24H2) have changed Focus Assist behavior; the registry toggle may not fully suppress notifications if Focus is managed by a different setting. This is a Windows limitation, not a script bug.
-
 ### search web opens a blank Google page
 
 - The command only works with a query: search web quantum computing. If you say just search web, no query is appended.
 - The google alias resolves to search web with no suffix. For google query support, a prefix-alias table would be needed — not implemented in this version.
 
+### Cmd window / doskey output when launching apps
+
+All `commands:` and `scripts:` entries run with `shell=False` + `CREATE_NO_WINDOW`. If you add a command needing pipes, redirection, or env expansion, you must run it through an explicit `cmd.exe /c "..."` in the YAML string — but that reintroduces doskey output. Prefer wrapping such logic in a `.ps1` or `.py` script instead.
+
+### `stt` mode hangs or doesn't stop
+
+- Verify the safety cap `record_seconds_stt_max` is set.
+- Double-tap Right Ctrl again within the safety window to stop manually.
+- Check `recordings/temp_stt.wav` is being written and overwritten between attempts.
+- If `sounddevice` can't open the microphone, a negative ding plays and a "Microphone unavailable" notification appears; the tray returns to idle immediately.
+
+### `close explorer` leaves windows open
+
+The `Shell.Application` COM enumeration only closes windows created via the Explorer shell. Some dialogs (e.g. Control Panel windows) may not be enumerated. Taskbar and desktop always remain.
+
+### `close X` reports "Process not running"
+
+`taskkill` returned non-zero because the named process was not running. Harmless.
+
+---
+
 ## Version History
 
-- v1.3.0 (main.py) — parakeet STT, speak_text, speak_responses flag, screenshot marker
-- v1.4.0 (intent.py) — marker intent, search web prefix, removed time/mute
-- v1.4.0 (actions.py) — _take_screenshot, removed time/mute/speak calls
-- v1.1.0 (stt.py) — parakeet-cli with --vad
-- v1.1.0 (tts.py) — speak_text via Piper + temp WAV
-- v1.2.0 (commands.yaml) — Tier-1 productivity commands + screenshot marker
-- v1.3.0 (generate_voice_assets.py) — reduced to listening.wav and exiting_assistant.wav only
-- v1.1.0 (config.json) — added parakeet paths, speak_responses
+| Version | Change |
+|---|---|
+| `main.py` v1.7.0 | Mode selection, STT streaming capture with hotkey toggle + safety cap, `speak_responses` flag, ding-vs-speak branching |
+| `core/actions.py` v1.8.0 | `execute(intent, speak_responses)`, pre-recorded cues gated on the flag, dings on the false path, `screenshot_saved.wav` replaces dynamic path speech |
+| `core/intent.py` v1.6.0 | Search prefixes, URL encoding, marker intents, precedence `commands:` > `scripts:` |
+| `core/stt.py` v1.2.0 | Dispatcher for parakeet / whisper backends |
+| `core/tts.py` v1.2.0 | `play_ding`, `speak_text` |
+| `tools/generate_voice_assets.py` v1.6.0 | 6 spoken assets + 5 synthesized dings |
+| `config/commands.yaml` v1.4.0 | `scripts:` section, `close:` section, `search_prefixes:` |
+| `config/config.json` v1.5.0 | `mode`, `stt_engine`, `record_seconds_stt_max`, `screenshot_dir`, `speak_responses` |
+
+---
 
 ## License
 

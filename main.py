@@ -1,4 +1,4 @@
-# Version: v1.6.0
+# Version: v1.7.0
 
 import json
 import subprocess
@@ -16,7 +16,7 @@ from core.stt import transcribe
 from core.intent import detect_intent
 from core.actions import execute
 from core.notifier import notify
-from core.tts import speak, play_ding, speak_text
+from core.tts import speak, play_ding
 
 import keyboard
 
@@ -31,9 +31,10 @@ with open(
 
 
 MODE = CONFIG.get("mode", "command")
+SPEAK_RESPONSES = CONFIG.get("speak_responses", False)
 
 SAMPLE_RATE = 16000
-BLOCKSIZE = 512          # 32 ms at 16 kHz
+BLOCKSIZE = 512
 
 
 app = QApplication([])
@@ -46,6 +47,16 @@ tray = AssistantTray(
 tray.exit_requested.connect(
     lambda: shutdown_assistant()
 )
+
+
+# ------------------------------------------------------- listening cue
+
+def play_listening_cue():
+
+    if SPEAK_RESPONSES:
+        speak("assets/listening.wav")
+    else:
+        play_ding("ding")
 
 
 # ------------------------------------------------------- stt-mode state
@@ -236,7 +247,7 @@ def _stt_stop_and_transcribe():
     notify(text)
 
 
-# ------------------------------------------------------- command mode flow
+# ------------------------------------------------------- command mode
 
 def run_voice_request():
 
@@ -248,9 +259,7 @@ def run_voice_request():
 
         notify("Listening")
 
-        speak(
-            "assets/listening.wav"
-        )
+        play_listening_cue()
 
         record_audio(
             "recordings/temp.wav",
@@ -279,7 +288,8 @@ def run_voice_request():
     )
 
     response = execute(
-        intent
+        intent,
+        SPEAK_RESPONSES
     )
 
     print(
@@ -288,19 +298,16 @@ def run_voice_request():
 
     if response == "__EXIT__":
 
-        speak(
-            "assets/exiting_assistant.wav"
-        )
+        if SPEAK_RESPONSES:
+            speak("assets/exiting_assistant.wav")
+        else:
+            play_ding("close_or_exit")
 
         shutdown_assistant()
 
         return
 
-    if CONFIG.get("speak_responses", False):
-
-        speak_text(response)
-
-    notify(response)
+    notify(response or "Done")
 
 
 # ------------------------------------------------------- lifecycle
@@ -366,10 +373,7 @@ def right_ctrl_pressed(event):
 
             notify("Listening")
 
-            try:
-                speak("assets/listening.wav")
-            except Exception as e:
-                print(f"LISTENING CUE FAILED: {e}")
+            play_listening_cue()
 
             _stt_start()
 
