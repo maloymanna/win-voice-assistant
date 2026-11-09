@@ -124,7 +124,7 @@ To install:
 This creates:
 
 - Spoken (Piper): `listening.wav`, `command_executed.wav`, `workflow_completed.wav`, `unknown_command.wav`, `exiting_assistant.wav`, `screenshot_saved.wav`
-- Synthesized: `positive_ding.wav`, `negative_ding.wav`, `close_or_exit.wav`, `camera_shutter.wav`   
+- Synthesized: `ding.wav`, `positive_ding.wav`, `negative_ding.wav`, `close_or_exit.wav`, `camera_shutter.wav`   
 
 4. Run:
 

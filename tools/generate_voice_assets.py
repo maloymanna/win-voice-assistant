@@ -1,4 +1,4 @@
-# Version: v1.6.0
+# Version: v1.7.0
 
 import json
 import subprocess
@@ -17,30 +17,16 @@ with open(
 
 
 SPOKEN_OUTPUTS = {
-    "assets/listening.wav":
-        "Listening",
-
-    "assets/command_executed.wav":
-        "Command executed",
-
-    "assets/workflow_completed.wav":
-        "Workflow completed",
-
-    "assets/unknown_command.wav":
-        "Unknown command",
-
-    "assets/exiting_assistant.wav":
-        "Exiting assistant",
-
-    "assets/screenshot_saved.wav":
-        "Screenshot saved",
+    "assets/listening.wav":       "Listening",
+    "assets/command_executed.wav": "Command executed",
+    "assets/workflow_completed.wav": "Workflow completed",
+    "assets/unknown_command.wav":  "Unknown command",
+    "assets/exiting_assistant.wav": "Exiting assistant",
+    "assets/screenshot_saved.wav": "Screenshot saved",
 }
 
 
-Path("assets").mkdir(
-    parents=True,
-    exist_ok=True
-)
+Path("assets").mkdir(parents=True, exist_ok=True)
 
 
 for output_file, text in SPOKEN_OUTPUTS.items():
@@ -61,8 +47,8 @@ for output_file, text in SPOKEN_OUTPUTS.items():
     print(f"Created: {output_file}")
 
 
-def _generate_two_note(path, notes, sample_rate=22050,
-                       amplitude=0.5, fade_ms=5):
+def _generate_notes(path, notes, sample_rate=22050,
+                    amplitude=0.5, fade_ms=5):
 
     fade_n = int(sample_rate * fade_ms / 1000)
 
@@ -101,48 +87,29 @@ def _generate_camera_shutter(path, sample_rate=22050,
 
     noise = rng.standard_normal(n) * amplitude
 
-    # Fast decay envelope: sharp click burst
     env = np.exp(-np.linspace(0, 8, n))
-
-    wave = noise * env
 
     sf.write(
         path,
-        wave,
+        noise * env,
         sample_rate,
         subtype="PCM_16"
     )
 
 
-_generate_two_note(
-    "assets/positive_ding.wav",
-    [(880, 0.08), (1320, 0.12)]
-)
+_generate_notes("assets/ding.wav", [(660, 0.12)])
+print("Created: assets/ding.wav")
 
+_generate_notes("assets/positive_ding.wav", [(880, 0.08), (1320, 0.12)])
 print("Created: assets/positive_ding.wav")
 
-
-_generate_two_note(
-    "assets/negative_ding.wav",
-    [(440, 0.12), (330, 0.18)]
-)
-
+_generate_notes("assets/negative_ding.wav", [(440, 0.12), (330, 0.18)])
 print("Created: assets/negative_ding.wav")
 
-
-_generate_two_note(
-    "assets/close_or_exit.wav",
-    [(523, 0.10), (392, 0.16)]
-)
-
+_generate_notes("assets/close_or_exit.wav", [(523, 0.10), (392, 0.16)])
 print("Created: assets/close_or_exit.wav")
 
-
-_generate_camera_shutter(
-    "assets/camera_shutter.wav"
-)
-
+_generate_camera_shutter("assets/camera_shutter.wav")
 print("Created: assets/camera_shutter.wav")
-
 
 print("Done.")
