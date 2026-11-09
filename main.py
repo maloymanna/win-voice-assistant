@@ -1,4 +1,4 @@
-# Version: v1.7.0
+# Version: v1.7.1
 
 import json
 import subprocess
@@ -63,6 +63,7 @@ def play_listening_cue():
 
 _stt_lock = threading.Lock()
 _stt_recording = False
+_stt_starting = False
 _stt_chunks = []
 _stt_stream = None
 _stt_safety_timer = None
@@ -141,6 +142,32 @@ def _stt_start():
         _stt_safety_timer.start()
 
     print("STT: recording started")
+
+
+def _stt_begin():
+
+    # Runs on a worker thread so that sd.play() gets a normal
+    # PortAudio context. Calling it on the keyboard hook thread
+    # produces silent playback with no error (root cause of the
+    # missing ding).
+
+    global _stt_starting
+
+    try:
+
+        tray.set_listening()
+
+        notify("Listening")
+
+        play_listening_cue()
+
+        _stt_start()
+
+    finally:
+
+        with _stt_lock:
+
+            _stt_starting = False
 
 
 def _stt_stop_and_transcribe():
@@ -342,7 +369,7 @@ last_right_ctrl = 0
 
 def right_ctrl_pressed(event):
 
-    global last_right_ctrl
+    global last_right_ctrl, _stt_starting
 
     now = time.time()
 
@@ -360,6 +387,8 @@ def right_ctrl_pressed(event):
 
             is_recording = _stt_recording
 
+            is_starting = _stt_starting
+
         if is_recording:
 
             threading.Thread(
@@ -367,15 +396,16 @@ def right_ctrl_pressed(event):
                 daemon=True
             ).start()
 
-        else:
+        elif not is_starting:
 
-            tray.set_listening()
+            with _stt_lock:
 
-            notify("Listening")
+                _stt_starting = True
 
-            play_listening_cue()
-
-            _stt_start()
+            threading.Thread(
+                target=_stt_begin,
+                daemon=True
+            ).start()
 
         return
 
