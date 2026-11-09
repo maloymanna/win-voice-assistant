@@ -1,4 +1,4 @@
-# Version: v1.7.0
+# Version: v1.7.1
 
 import json
 import subprocess
@@ -97,7 +97,7 @@ def _generate_camera_shutter(path, sample_rate=22050,
     )
 
 
-_generate_notes("assets/ding.wav", [(660, 0.12)])
+_generate_notes("assets/ding.wav", [(660, 0.10), (660, 0.10)])
 print("Created: assets/ding.wav")
 
 _generate_notes("assets/positive_ding.wav", [(880, 0.08), (1320, 0.12)])
